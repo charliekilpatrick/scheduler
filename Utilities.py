@@ -7,10 +7,6 @@ from astropy.time import Time
 from astropy.table import unique, Column
 import csv, requests, sys, numpy as np
 
-target_lists = {
-    'nickel': 'https://ziggy.ucolick.org/yse/explorer/57/download?format=csv'
-}
-
 target_table_names = ('name', 'ra', 'dec', 'priority', 'date', 'mag', 'type')
 target_table_row   = [['X' * 40], [0.], [0.], [0.0],
     [Time('2019-01-01T00:00:00')], [0.0], ['X' * 40]]
@@ -68,58 +64,45 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
 
     # Sanitize columns
     for key in data_table.keys():
-        data_table.rename_column(key, key.lower())
+        newkey = key.lower().replace(' ','_')
+        data_table.rename_column(key, newkey)
 
-    if 'object' in data_table.keys():
-        data_table.rename_column('object','name')
-
-    if obstype=='FORCE':
-
-        typ = ['FORCE']*len(data_table)
-        if ':' in str(data_table[0]['ra']) and ':' in str(data_table[0]['dec']):
-            coord = [SkyCoord(r['ra'],r['dec'],unit=(u.hour,u.deg))
-                for r in data_table]
-        else:
-            coord = [SkyCoord(r['ra'],r['dec'],unit=(u.deg,u.deg))
-                for r in data_table]
-        exp = [e for e in data_table['exptime']]
-        fil = [f for f in data_table['filter']]
-        nam = [n for n in data_table['name']]
-        pri = [priority]*len(data_table)
-
-        table = Table([nam,coord,typ,exp,fil,pri],
-            names=('name','coord','type','exptime','filter','priority'))
-
-        return(table)
+    for key in data_table.keys():
+        if key in ['fieldra','r.a.','right_ascension']:
+            data_table.rename_column(key, 'ra')
+        if key in ['fielddec','declination','dec.']:
+            data_table.rename_column(key, 'dec')
+        if key in ['fieldname','object']:
+            data_table.rename_column(key, 'name')
 
     if len(data_table) > max_length:
         data_table.sort('priority')
         data_table.reverse()
         data_table = data_table[:max_length]
 
-    if gw:
-        table = blank_target_table(length=len(data_table))
+
+    table = blank_target_table(length=len(data_table))
+
+    if gw: 
         table['type'] = ['GW']*len(data_table)
         table['mag'] = [target_mag+float(gw)]*len(data_table)
-        table['date'] = [Time(datetime.now())]*len(data_table)
-        table['ra'] = [d for d in data_table['fieldra']]
-        table['dec'] = [d for d in data_table['fielddec']]
-        table['name'] = data_table['fieldname']
-        table['priority'] = data_table['priority']
-
         # Check if A_lambda is in table
         if 'a_lambda' in data_table.keys():
             # Adjust the magnitudes to account for a_lambda
             table['mag'] = table['mag'] + data_table['a_lambda']
 
-        # Reprioritize by approximate priority
-        col_data = np.log10(table['priority'])
-        col = Column(np.max(col_data) + 1.0 - col_data, name='priority')
-        table['priority'] = col
+    table['date'] = [Time(datetime.now())]*len(data_table)
+    table['ra'] = data_table['ra']
+    table['dec'] = data_table['dec']
+    table['name'] = data_table['name']
+    table['priority'] = data_table['priority']
 
-        return(table)
+    # Reprioritize by approximate priority
+    col_data = np.log10(table['priority'])
+    col = Column(np.max(col_data) + 1.0 - col_data, name='priority')
+    table['priority'] = col
 
-    return(None)
+    return(table)
 
 def download_targets(telescope):
 

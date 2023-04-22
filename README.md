@@ -1,11 +1,17 @@
-# Scheduler
-Schedule observations for a variety of observatories/telescopes
+# gw_scheduler
+GW Scheduler based on Dave Coulter's SN scheduler, with help from Tiara Hung, Jay Sarva, Karelle Sielez.
 
-To install environment files:
-`conda env create -n scheduler -f environment.yml`
+Some dependencies needed: 
 
-Next, activate that environment:
-`source activate scheduler`
+pip install ephem
 
-Then, install the pip packages:
-`pip install -r requirements.txt` 
+Usage: (python 3)
+
+
+python master.py --tiles_file example_tiles.txt --date 20190802 --telescope Swope 
+
+Options include: --start HHMM --end HHMM or --now True (UT times); --asap (observe high-priority targets first)
+
+Telescope options: Swope, Thacher, Nickel
+
+Note: exposure times, bands, etc, can be changed in the Telescopes.py file

@@ -6,10 +6,10 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np, csv, sys
 from astropy.time import Time
 
-from Telescope import Telescope
+import Telescope
 
 # Used with Las Campanas Observatory
-class T80S(Telescope):
+class Blanco(Telescope.Telescope):
 
     def __init__(self):
         self.targets = None
@@ -22,6 +22,9 @@ class T80S(Telescope):
             C.r_band:16.43413935,
             C.i_band:15.86755865,
             C.z_band:15.4,
+            C.J_band:15.0,
+            C.H_band:15.0,
+            C.K_band:15.0,
         }
 
         self.exp_funcs = {

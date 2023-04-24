@@ -1,6 +1,6 @@
 import Constants
 import Options
-from Utilities import *
+import Utilities
 from Target import TargetType, Target
 from observatory_defs import observatories
 
@@ -38,7 +38,7 @@ def main():
 
     # If a target list is provided via the file name then use it
     if file_name is not None:
-        target_data = get_targets(file_name, gw=args.gw, target_mag=target_mag)
+        target_data = Utilities.get_targets(file_name, gw=args.gw, target_mag=target_mag)
     # Otherwise download a target list from YSE PZ
     else:
         message = '\n\nDownloading target list for {tel}...\n\n'
@@ -50,7 +50,6 @@ def main():
         error = 'ERROR: could not load or download any target data!'
         print(error)
         sys.exit(1)
-
 
     for i in range(len(observatory_telescopes)):
 
@@ -85,9 +84,8 @@ def main():
                     target_type=target_type,
                     observatory_lat=obs.ephemeris.lat,
                     sidereal_radian_array=obs.sidereal_radian_array,
-                    disc_date=target['date'],
+                    ref_date=target['date'],
                     apparent_mag=target['mag'],
-                    obs_date=Time(obs.obs_date),
                     halimit=args.halimit
                 )
             )

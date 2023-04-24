@@ -20,6 +20,7 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.table import Column, Table
 from astroquery.mast import Catalogs
+from astropy.time import Time
 
 def download_ps1catalog(target, Mmax=18.0, radius=0.05):
         coord = target.coord
@@ -46,7 +47,7 @@ def download_ps1catalog(target, Mmax=18.0, radius=0.05):
 
 class Observatory():
     def __init__(self, name, lon, lat, elevation, horizon, telescopes,
-        obs_date_str, utc_offset, utc_offset_name, startNow, start, end):
+        utc_offset, utc_offset_name):
 
         self.name = name
         self.ephemeris = ephem.Observer()
@@ -56,27 +57,10 @@ class Observatory():
         self.ephemeris.horizon = horizon
         self.telescopes = telescopes
 
-        self.obs_date_string = obs_date_str
-        obs_date = parse('%s 12:00' % obs_date_str) # UTC Noon
-        self.obs_date = obs_date
-        self.ephemeris.date = (self.obs_date - timedelta(hours=utc_offset))
-
         self.utc_begin_night = self.ephemeris.next_setting(ephem.Sun(),
             use_center=True).datetime()
         self.utc_end_night = self.ephemeris.next_rising(ephem.Sun(),
             use_center=True).datetime()
-
-        if startNow:
-            self.utc_begin_night = datetime.utcnow()
-        elif (start is not None) and (str(start[:2]) != 'No'):
-            self.utc_begin_night = self.utc_begin_night.replace(hour=int(start[:2]))
-            self.utc_begin_night = self.utc_begin_night.replace(minute=int(start[2:]))
-            self.utc_end_night = self.ephemeris.next_rising(ephem.Sun(), use_center=True).datetime() + timedelta(-1)
-        if (end is not None) and (str(end[:2]) != 'No'):
-            self.utc_end_night = self.utc_end_night.replace(hour=int(end[:2]))
-            self.utc_end_night = self.utc_end_night.replace(minute=int(end[2:]))
-        if (self.utc_end_night<self.utc_begin_night):
-            self.utc_end_night = self.utc_end_night + timedelta(1)
 
         self.local_begin_night = pytz.utc.localize(self.utc_begin_night) \
             .astimezone(UTC_Offset(utc_offset,utc_offset_name))
@@ -203,6 +187,16 @@ class Observatory():
         first = next(i)
         contiguous = all(a == b for a, b in enumerate(i, first + 1))
         return contiguous
+
+    def get_start_of_observing_target(self, tgt):
+
+        date = Time(self.utc_begin_night)
+        # Schedule is segmented into seconds/C.round_to from start of the night
+        idx = tgt.starting_index
+
+        newdate = date + 60.0 * u.s  / C.round_to * idx
+
+        return(newdate)
 
     def schedule_targets(self, telescope_name, preview_plot=False, asap=False,
         output_files=None, fieldcenters=None, cat_params={}):
@@ -448,7 +442,17 @@ class Observatory():
 
         self.compute_night_fill_fraction(o)
 
-        print('\n\nWriting out schedule:\n\n')
+        # Get date based on first and last target in schedule
+        tgt0 = o[0]
+        tgt1 = o[-1]
 
-        telescope.write_schedule(self.name, self.obs_date, o, output_files=output_files,
+        date0 = self.get_start_of_observing_target(tgt0)
+        date1 = self.get_start_of_observing_target(tgt1)
+
+        d0 = date0.datetime.strftime('%Y-%m-%d')
+        d1 = date1.datetime.strftime('%Y-%m-%d')
+
+        print(f'\n\nWriting out schedule: {d0} to {d1}\n\n')
+
+        telescope.write_schedule(self.name, date0, o, output_files=output_files,
             fieldcenters=fieldcenters, pointing=self.pointing)

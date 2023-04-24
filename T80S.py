@@ -6,10 +6,10 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np, csv, sys
 from astropy.time import Time
 
-from Telescope import Telescope
+import Telescope
 
 # Used with Las Campanas Observatory
-class Swope(Telescope):
+class T80S(Telescope.Telescope):
 
     def __init__(self):
         self.targets = None
@@ -18,11 +18,10 @@ class Swope(Telescope):
         #change as of Jun 4 after mirror cleaning
         self.filters = {
             C.u_band:15.05285437,
-            C.B_band:16.24963648,
-            C.V_band:16.2719428,
             C.g_band:16.4313935,
             C.r_band:16.43413935,
-            C.i_band:15.86755865
+            C.i_band:15.86755865,
+            C.z_band:15.4,
         }
 
         self.exp_funcs = {
@@ -92,8 +91,6 @@ class Swope(Telescope):
 
         # Don't know what the apparent mag should be?
         exposures.update({C.u_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.u_band]))})
-        exposures.update({C.B_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.B_band]))})
-        exposures.update({C.V_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.V_band]))})
         exposures.update({C.g_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.g_band]))})
         exposures.update({C.r_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.r_band]))})
         exposures.update({C.i_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.i_band]))})
@@ -111,23 +108,21 @@ class Swope(Telescope):
     def compute_template_exposure(self, tmp):
         exposures = {}
         exposures.update({C.u_band: 1800})
-        exposures.update({C.B_band: 1800})
-        exposures.update({C.V_band: 1200})
         exposures.update({C.g_band: 1200})
         exposures.update({C.r_band: 1200})
         exposures.update({C.i_band: 1200})
 
         tmp.exposures = exposures
 
-    def compute_gw_exposure(self, gw):
+    def compute_gw_exposure(self, gw, s_n=5, filts=[C.r_band]):
         exposures = {}
 
         # Compute gw exposure
-        s_to_n = 5.
-        r_exp = self.time_to_S_N(s_to_n, gw.apparent_mag, self.filters[C.r_band])
-        mean_exp = self.round_to_num(C.round_to, r_exp)
+        for filt in filts:
+            exp = self.time_to_S_N(s_n, gw.apparent_mag, self.filters[filt])
+            mean_exp = self.round_to_num(C.round_to, exp)
 
-        exposures.update({C.r_band: mean_exp})
+            exposures.update({filt: mean_exp})
 
         gw.exposures = exposures
 

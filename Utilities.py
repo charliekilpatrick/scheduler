@@ -10,7 +10,7 @@ import csv, requests, sys, numpy as np
 target_table_names = ('name', 'ra', 'dec', 'priority', 'date', 'mag', 'type')
 target_table_row   = [['X' * 40], [0.], [0.], [0.0],
     [Time('2019-01-01T00:00:00')], [0.0], ['X' * 40]]
-max_length = 10000
+max_length = 20000
 
 class UTC_Offset(tzinfo):
 
@@ -42,16 +42,35 @@ lick_pdt_utc_offset = -7 # hours
 
 keck_offset=-10
 
+def is_number(val):
+    try:
+        val = float(val)
+        return(True)
+    except ValueError:
+        return(False)
+
+def parse_coord(ra, dec):
+    if (not (is_number(ra) and is_number(dec)) and
+        (':' not in str(ra) and ':' not in str(dec))):
+        return(None)
+
+    if (':' in str(ra) and ':' in str(dec)):
+        # Input RA/DEC are sexagesimal
+        unit = (u.hourangle, u.deg)
+    else:
+        unit = (u.deg, u.deg)
+
+    try:
+        coord = SkyCoord(ra, dec, frame='icrs', unit=unit)
+        return(coord)
+    except ValueError:
+        return(None)
+
 
 # Get a blank target table
-def blank_target_table(length=0):
-    if length==0:
-        tab = Table(target_table_row, names=target_table_names)
-        return(tab[:0].copy())
-    else:
-        data = [el*length for el in target_table_row]
-        tab = Table(data, names=target_table_names)
-        return(tab)
+def blank_target_table():
+    tab = Table(target_table_row, names=target_table_names)
+    return(tab[:0].copy())
 
 # file_name assumed to be CSV with headers...
 # input is file name and an optional value gw.  gw represents the preferred
@@ -81,40 +100,52 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
         data_table = data_table[:max_length]
 
 
-    table = blank_target_table(length=len(data_table))
+    table = blank_target_table()
 
-    if gw: 
-        table['type'] = ['GW']*len(data_table)
-        table['mag'] = [target_mag+float(gw)]*len(data_table)
-        # Check if A_lambda is in table
-        if 'a_lambda' in data_table.keys():
-            # Adjust the magnitudes to account for a_lambda
-            table['mag'] = table['mag'] + data_table['a_lambda']
+    priority_data = np.log10(data_table['priority'])
+    for row in data_table:
+        new_row = {}
+        if gw: 
+            new_row['type'] = 'GW'
+            new_row['mag'] = target_mag+float(gw)
+            # Check if A_lambda is in table
+            if 'a_lambda' in data_table.keys():
+                # Adjust the magnitudes to account for a_lambda
+                new_row['mag'] = new_row['mag'] + row['a_lambda']
+        elif 'type' in row.colnames:
+            new_row['type'] = row['type']
+        else:
+            new_row['type'] = 'SN'
 
-    table['date'] = [Time(datetime.now())]*len(data_table)
-    table['ra'] = data_table['ra']
-    table['dec'] = data_table['dec']
-    table['name'] = data_table['name']
-    table['priority'] = data_table['priority']
+        if 'mag' in row.colnames and 'mag' not in new_row.keys():
+            new_row['mag'] = row['mag']
+        else:
+            new_row['mag'] = 19.0
 
-    # Reprioritize by approximate priority
-    col_data = np.log10(table['priority'])
-    col = Column(np.max(col_data) + 1.0 - col_data, name='priority')
-    table['priority'] = col
+        new_row['date'] = Time(datetime.now())
+
+        coord = parse_coord(row['ra'], row['dec'])
+        new_row['ra'] = coord.ra.degree
+        new_row['dec'] = coord.dec.degree
+        new_row['name'] = row['name']
+        new_row['priority'] = row['priority']
+
+        # Reprioritize by approximate priority
+        new_row['priority'] = np.max(priority_data) + 1.0 - np.log10(row['priority'])
+
+        table.add_row(new_row)
 
     return(table)
 
-def download_targets(telescope):
-
-    # Resolve the URL for the correct target list
-    if telescope.lower() in target_lists.keys():
-        url = target_lists[telescope.lower()]
+# Download a list of targets from a website that can provides a parseable table
+# by ascii.read.  Create priorities based on info from each target.
+def download_targets(url):
 
         # Use requests to get list of targets
         try:
             data = requests.get(url, timeout=30)
         except:
-            error = 'ERROR: could not get a response from YSE PZ.  Exiting...'
+            error = f'ERROR: could not get a response from {url}.  Exiting...'
             print(error)
             sys.exit()
 
@@ -172,7 +203,7 @@ def download_targets(telescope):
                 pri += 20.0
 
             try:
-                if (Time(datetime.now()).mjd - Time(row['disc_date']).mjd) < 50:
+                if (Time(datetime.utcnow()).mjd - Time(row['disc_date']).mjd) < 50:
                     pri += 2.0
             except AttributeError:
                 continue
@@ -189,9 +220,3 @@ def download_targets(telescope):
         targets['priority'] = max_priority - targets['priority']
 
         return(targets)
-
-    # Can't resolve list so throw print an error and return None
-    else:
-        error = 'ERROR: could not resolve a target list for telescope={tel}'
-        print(error.format(tel=telescope.lower()))
-        return(None)

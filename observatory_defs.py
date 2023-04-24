@@ -1,6 +1,11 @@
 from Observatory import Observatory
-from Telescope import Swope, Nickel, Thacher, T80S
-from Utilities import *
+import Utilities
+
+from Swope import Swope
+from Nickel import Nickel
+from Thacher import Thacher
+from T80S import T80S
+from Blanco import Blanco
 
 lco = Observatory(
         name="LCO",
@@ -9,7 +14,7 @@ lco = Observatory(
         elevation=2402,
         horizon="-12",
         telescopes={"Swope":Swope()},
-        utc_offset=lco_clt_utc_offset,
+        utc_offset=Utilities.lco_clt_utc_offset,
         utc_offset_name="CLST",
 )
 
@@ -20,8 +25,7 @@ lick = Observatory(
         elevation=1283,
         horizon="-12",
         telescopes={"Nickel":Nickel()},
-        obs_date_str=obs_date,
-        utc_offset=lick_pst_utc_offset,
+        utc_offset=Utilities.lick_pst_utc_offset,
         utc_offset_name="PST",
 )
 
@@ -32,7 +36,7 @@ thacher = Observatory(
         elevation=630.0,
         horizon="-12",
         telescopes={"Thacher":Thacher()},
-        utc_offset=lick_pst_utc_offset,
+        utc_offset=Utilities.lick_pst_utc_offset,
         utc_offset_name="PST",
 )
 
@@ -43,7 +47,7 @@ ctio = Observatory(
         elevation=2207.0,
         horizon="-12",
         telescopes={"T80S":T80S(),"Blanco":Blanco()},
-        utc_offset=lco_clt_utc_offset,
+        utc_offset=Utilities.lco_clt_utc_offset,
         utc_offset_name="CLST",
 )
 

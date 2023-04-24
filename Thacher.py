@@ -6,9 +6,9 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np, csv, sys
 from astropy.time import Time
 
-from Telescope import Telescope
+import Telescope
 
-class Thacher(Telescope):
+class Thacher(Telescope.Telescope):
 
     def __init__(self):
         self.targets = None

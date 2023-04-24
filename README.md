@@ -1,10 +1,17 @@
 # gw_scheduler
-GW Scheduler based on Dave Coulter's SN scheduler and updated by Charlie Kilpatrick, with help from Tiara Hung, Jay Sarva, Karelle Sielez.
+GW Scheduler based on Dave Coulter's SN scheduler, with help from Tiara Hung, Jay Sarva, Karelle Sielez.
 
-All required dependencies are located in requirements.txt. 
+Some dependencies needed: 
+
+pip install ephem
 
 Usage: (python 3)
 
-python CreateSchedule.py -f example_tiles.csv --date 20230423 --obstele LCO:Swope
 
-Telescope options: Swope, Thacher, Nickel, T80S
+python master.py --tiles_file example_tiles.txt --date 20190802 --telescope Swope 
+
+Options include: --start HHMM --end HHMM or --now True (UT times); --asap (observe high-priority targets first)
+
+Telescope options: Swope, Thacher, Nickel
+
+Note: exposure times, bands, etc, can be changed in the Telescopes.py file

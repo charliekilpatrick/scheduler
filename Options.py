@@ -4,7 +4,7 @@ def add_options():
     parser.add_argument("-f", "--file",
         help="CSV file with targets to schedule.")
     parser.add_argument("-d", "--date",
-        help="YYYYMMDD formatted observation date.")
+        help="YYYYMMDD formatted observation date [default is today].")
     parser.add_argument("-ot", "--obstele",
         help="Comma-delimited list of <Observatory>:<Telescope>.")
     parser.add_argument("-pp", "--plot",

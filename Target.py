@@ -22,12 +22,14 @@ class Target:
         self.ref_date = ref_date
         self.apparent_mag = apparent_mag
         self.obs_date = obs_date
+        self.halimit = halimit
 
-        # Computed by Constructor
-        self.raw_airmass_array = self.compute_airmass(observatory_lat,
-            sidereal_radian_array, halimit=halimit)
-        self.peak_airmass_idx = np.argmin(self.raw_airmass_array)
-        self.peak_airmass_val = self.raw_airmass_array[self.peak_airmass_idx]
+        self.raw_airmass_array = None
+        self.peak_airmass_idx = None
+        self.peak_airmass_val = None
+
+        self.initialize_airmass(observatory_lat, sidereal_radian_array,
+            halimit=self.halimit)
 
         # Computed by Telescope
         self.net_priority = self.priority
@@ -41,6 +43,14 @@ class Target:
         self.total_good_air_mass = 9999 # Proxy for elevation
         self.scheduled_time_array = None # Airmass plot abscissa
         self.scheduled_airmass_array = None # Airmass plot ordinate
+
+    def initialize_airmass(self, latitude, sidereal_radian_array, halimit=None):
+
+        # Computed by Constructor
+        self.raw_airmass_array = self.compute_airmass(latitude,
+            sidereal_radian_array, halimit=halimit)
+        self.peak_airmass_idx = np.argmin(self.raw_airmass_array)
+        self.peak_airmass_val = self.raw_airmass_array[self.peak_airmass_idx]
 
     # Compute airmass for an observatory at a specific latitude given an input
     # array of sidereal times (in radians).

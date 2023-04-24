@@ -38,7 +38,8 @@ def main():
 
     # If a target list is provided via the file name then use it
     if file_name is not None:
-        target_data = Utilities.get_targets(file_name, gw=args.gw, target_mag=target_mag)
+        target_data = Utilities.get_targets(file_name, gw=args.gw, 
+            target_mag=target_mag)
     # Otherwise download a target list from YSE PZ
     else:
         message = '\n\nDownloading target list for {tel}...\n\n'
@@ -84,7 +85,7 @@ def main():
                     target_type=target_type,
                     observatory_lat=obs.ephemeris.lat,
                     sidereal_radian_array=obs.sidereal_radian_array,
-                    ref_date=target['date'],
+                    ref_date=None,#target['date'],
                     apparent_mag=target['mag'],
                     halimit=args.halimit
                 )
@@ -98,7 +99,7 @@ def main():
 
         obs.schedule_targets(tele_keys[i], preview_plot,
             output_files=output_files, fieldcenters=fieldcenters,
-            cat_params=cat_params)
+            cat_params=cat_params, obs_date=obs_date)
 
 if __name__ == "__main__": main()
 

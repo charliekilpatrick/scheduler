@@ -47,25 +47,65 @@ def download_ps1catalog(target, Mmax=18.0, radius=0.05):
 
 class Observatory():
     def __init__(self, name, lon, lat, elevation, horizon, telescopes,
-        utc_offset, utc_offset_name):
+        utc_offset, utc_offset_name, obs_date=None):
 
         self.name = name
-        self.ephemeris = ephem.Observer()
-        self.ephemeris.lon = lon
-        self.ephemeris.lat = lat
-        self.ephemeris.elevation = elevation
-        self.ephemeris.horizon = horizon
-        self.telescopes = telescopes
 
-        self.utc_begin_night = self.ephemeris.next_setting(ephem.Sun(),
+        # Default is to assume we're schedule for now/tonight.  Otherwise, 
+        # date can be passed when the schedule is created.
+        if obs_date is None:
+            self.obs_date = datetime.utcnow()
+        else:
+            self.obs_date = Time(obs_date).datetime
+
+        self.ephemeris = None
+        self.telescopes = telescopes
+        self.horizon = horizon
+        self.lon = lon
+        self.lat = lat
+        self.elevation = elevation
+
+        self.utc_offset = utc_offset
+        self.utc_offset_name = utc_offset_name
+
+        self.pointing = []
+        self.sidereal_string_array = []
+        self.sidereal_radian_array = []
+        self.utc_time_array = None
+        self.local_time_array = None
+
+        self.utc_begin_night = None
+        self.utc_end_night = None
+        self.local_begin_night = None
+        self.local_end_night = None
+
+        self.length_of_night = 0.
+
+        self.update_obs_date(self.obs_date)
+
+    def update_obs_date(self, date):
+
+        self.ephemeris = ephem.Observer()
+        self.ephemeris.lon = self.lon
+        self.ephemeris.lat = self.lat
+        self.ephemeris.elevation = self.elevation
+        self.ephemeris.horizon = self.horizon
+
+        date_str = date.strftime('%Y-%m-%d')
+
+        obs_date = parse("%s 12:00" % date_str) # UTC Noon
+        self.obs_date = obs_date
+
+        self.ephemeris.date = (self.obs_date - timedelta(hours=self.utc_offset))
+        self.utc_begin_night = self.ephemeris.next_setting(ephem.Sun(), 
             use_center=True).datetime()
-        self.utc_end_night = self.ephemeris.next_rising(ephem.Sun(),
+        self.utc_end_night = self.ephemeris.next_rising(ephem.Sun(), 
             use_center=True).datetime()
 
         self.local_begin_night = pytz.utc.localize(self.utc_begin_night) \
-            .astimezone(UTC_Offset(utc_offset,utc_offset_name))
+            .astimezone(UTC_Offset(self.utc_offset,self.utc_offset_name))
         self.local_end_night = pytz.utc.localize(self.utc_end_night) \
-            .astimezone(UTC_Offset(utc_offset,utc_offset_name))
+            .astimezone(UTC_Offset(self.utc_offset,self.utc_offset_name))
 
         # Total time in night
         timeDiff = self.local_end_night - self.local_begin_night
@@ -78,9 +118,6 @@ class Observatory():
         self.local_time_array = np.asarray([self.local_begin_night +\
             timedelta(seconds=(i * C.round_to))
             for i in range(self.length_of_night)])
-
-        self.sidereal_string_array = []
-        self.sidereal_radian_array = []
 
         # Get a bright source for pointing
         self.ephemeris.date = self.utc_begin_night
@@ -117,7 +154,8 @@ class Observatory():
 
             tokens = str(st).split(":")
             float_tokens = [float(t) for t in tokens]
-            st_string = "%02d:%02d:%02d" % (float_tokens[0],float_tokens[1],float_tokens[2])
+            st_string = "%02d:%02d:%02d" % (float_tokens[0],float_tokens[1],
+                float_tokens[2])
 
             self.sidereal_string_array.append(st_string)
             self.sidereal_radian_array.append(st)
@@ -199,13 +237,27 @@ class Observatory():
         return(newdate)
 
     def schedule_targets(self, telescope_name, preview_plot=False, asap=False,
-        output_files=None, fieldcenters=None, cat_params={}):
+        output_files=None, fieldcenters=None, cat_params={}, obs_date=None):
 
         # Update internal Target list with priorities and exposures
         telescope = self.telescopes[telescope_name]
         telescope.compute_exposures()
         telescope.compute_net_priorities()
         targets = telescope.get_targets()
+
+        if obs_date is not None:
+
+            self.__init__(self.name, self.lon, self.lat, self.elevation, 
+                self.horizon, self.telescopes, self.utc_offset, 
+                self.utc_offset_name, obs_date=obs_date)
+
+            targets_copy = []
+            for tgt in targets:
+                tgt.initialize_airmass(self.lat, self.sidereal_radian_array,
+                    halimit=tgt.halimit)
+                targets_copy.append(tgt)
+
+            targets = targets_copy
 
         def packable(goodtime, tgt):
             """Find nearby time intervals that amount to the observing time of a tile"""

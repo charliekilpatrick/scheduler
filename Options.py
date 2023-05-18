@@ -2,7 +2,7 @@ def add_options():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--file",
-        help="CSV file with targets to schedule.")
+        help="CSV file with targets to schedule.  Can be a URL.")
     parser.add_argument("-d", "--date",
         help="YYYYMMDD formatted observation date [default is today].")
     parser.add_argument("-ot", "--obstele",
@@ -43,6 +43,10 @@ def add_options():
         help="Require a minimum of this number of sources to schedule.")
     parser.add_argument("--halimit", default=None,
         help="Input hour angle limit for telescopes with limit.")
+    parser.add_argument("--username", default='', type=str,
+        help="Username for parsing input target list when it is a URL.")
+    parser.add_argument("--password", default='', type=str,
+        help="Password for parsing input target list when it is a URL.")
     
     args = parser.parse_args()
 

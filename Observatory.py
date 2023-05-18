@@ -251,13 +251,17 @@ class Observatory():
                 self.horizon, self.telescopes, self.utc_offset, 
                 self.utc_offset_name, obs_date=obs_date)
 
+            # Recompute exposures and priorities for new telescope night
             targets_copy = []
             for tgt in targets:
                 tgt.initialize_airmass(self.lat, self.sidereal_radian_array,
                     halimit=tgt.halimit)
                 targets_copy.append(tgt)
 
-            targets = targets_copy
+            telescope.targets = targets_copy
+            telescope.compute_exposures()
+            telescope.compute_net_priorities()
+            targets = telescope.get_targets()
 
         def packable(goodtime, tgt):
             """Find nearby time intervals that amount to the observing time of a tile"""
@@ -305,6 +309,8 @@ class Observatory():
             if (tgt.total_observable_min >= tgt.total_minutes and
                 tgt.total_minutes_only_exposures>0):
                 targets_copy.append(tgt)
+
+        print('\n\nScheduling targets:\n\n')
 
         targets = targets_copy
         targets.sort(key = operator.attrgetter('priority'))
@@ -491,6 +497,10 @@ class Observatory():
                     for _ in tgt.exposures.items()),
                 total=str(tgt.total_minutes), priority='%7.4f'%tgt.priority)
             print(fmt)
+
+            # Also get UTC start time
+            tgt.utc_start_time = self.utc_time_array[tgt.starting_index]
+
 
         self.compute_night_fill_fraction(o)
 

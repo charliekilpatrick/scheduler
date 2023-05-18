@@ -6,6 +6,8 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np, csv, sys
 from astropy.time import Time
 
+import os
+
 import Telescope
 
 # Used with Lick Observatory
@@ -42,7 +44,10 @@ class Nickel(Telescope.Telescope):
         exposures = {}
 
         # Compute the current guess at apparent magnitude
-        days_from_disc = (sn.obs_date - sn.disc_date).jd
+        if sn.obs_date is None or sn.ref_date is None:
+            days_from_disc = 0.
+        else:
+            days_from_disc = (sn.obs_date - sn.ref_date).jd
         mag_reduction = days_from_disc*0.03
         adj_app_mag = sn.apparent_mag + mag_reduction
 
@@ -157,24 +162,30 @@ class Nickel(Telescope.Telescope):
             phot_file_to_write = output_files + '.phot'
             phot = open(phot_file_to_write, 'w')
         else:
-            file_to_write = "%s_%s_%s_GoodSchedule.csv" % (observatory_name, self.name, obs_date.strftime('%Y%m%d'))
+            file_to_write = "%s_%s_Schedule.csv" % (self.name, obs_date.strftime('%Y%m%d'))
         if fieldcenters:
             fc = open(fieldcenters, 'w')
             fc.write('# field ampl ra dec epoch raD decD RAoffset DecOffset \n')
 
         # Initialize Google sheets methods for Nickel
-        params = Logs.gsheets_params('nickel')
-        sheet = Logs.initiate_gsheet(params['gsheets_token'])
-        observers_sheet = params['OBSERVERS_SHEET']
-        observer, night = Logs.check_if_tel_on_date(sheet, observers_sheet,
-            obs_date)
+        if ('OBSERVERS_SHEET' in os.environ.keys() and 
+            'GSHEETS_TOKEN' in os.environ.keys() and
+            'TEMPLATE_SHEET' in os.environ.keys()):
+            params = Logs.gsheets_params(os.environ['GSHEETS_TOKEN'], 
+                                         os.environ['TEMPLATE_SHEET'])
+            observers_sheet = params['OBSERVERS_SHEET']
+            observer, night = Logs.check_if_tel_on_date(sheet, observers_sheet,
+                obs_date)
 
-        # Make an empty Nickel log
-        success = Logs.copy_log(sheet, params['TEMPLATE'], 'Nickel Log',
-            params['CURRENT_SHEET'], obs_date.strftime('%Y%m%d'))
+            # Make an empty Nickel log
+            success = Logs.copy_log(sheet, params['TEMPLATE'], 'Nickel Log',
+                params['CURRENT_SHEET'], obs_date.strftime('%Y%m%d'))
 
-        if not success:
-            return(1)
+            if not success:
+                return(1)
+        else:
+            observer = None
+            params = None
 
         with open(file_to_write,'w') as csvoutput:
             writer = csv.writer(csvoutput, lineterminator="\n")
@@ -303,18 +314,19 @@ class Nickel(Telescope.Telescope):
             writer.writerows(output_rows)
 
             # Output log in Nickel log format to output dir
-            target_list = 'nickel_targets_{0}'.format(obs_date.strftime('%Y%m%d'))
-            target_list = params['target_dir'] + target_list
-            with open(target_list, 'w') as f:
-                for row in output_rows:
-                    if row[0] and 'object' in row[0].lower():
-                        continue
-                    if row[0] and row[1] and row[2]:
-                        target_list_name=str(row[0]).replace('\'','')
-                        l='{0} {1} {2} {3} \n'.format(target_list_name,
-                            row[1].replace('\'',''),
-                            row[2].replace('\'',''),'2000')
-                        f.write(l)
+            if params is not None:
+                target_list = 'nickel_targets_{0}'.format(obs_date.strftime('%Y%m%d'))
+                target_list = params['target_dir'] + target_list
+                with open(target_list, 'w') as f:
+                    for row in output_rows:
+                        if row[0] and 'object' in row[0].lower():
+                            continue
+                        if row[0] and row[1] and row[2]:
+                            target_list_name=str(row[0]).replace('\'','')
+                            l='{0} {1} {2} {3} \n'.format(target_list_name,
+                                row[1].replace('\'',''),
+                                row[2].replace('\'',''),'2000')
+                            f.write(l)
 
 
 
@@ -322,13 +334,13 @@ class Nickel(Telescope.Telescope):
             for i,row in enumerate(output_rows):
                 output_rows[i] = [''] + row
 
-            print('Adding schedule to Google sheet under:',obs_date.strftime('%Y%m%d'))
-            print('Observer for tonight is:',observer)
-
-            Logs.populate_nickel_log(sheet, params['CURRENT_SHEET'],
-                obs_date.strftime('%Y%m%d'), output_rows,
-                date=obs_date.strftime('%Y/%m/%d'), observer=observer,
-                start_number=str(night * 1000 + 1))
+            if params is not None:
+                print('Adding schedule to Google sheet under:',obs_date.strftime('%Y%m%d'))
+                print('Observer for tonight is:',observer)
+                Logs.populate_nickel_log(sheet, params['CURRENT_SHEET'],
+                    obs_date.strftime('%Y%m%d'), output_rows,
+                    date=obs_date.strftime('%Y/%m/%d'), observer=observer,
+                    start_number=str(night * 1000 + 1))
 
         if fieldcenters:
             fc.close()

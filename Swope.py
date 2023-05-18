@@ -178,7 +178,10 @@ class Swope(Telescope.Telescope):
 
         if output_files:
             file_to_write = output_files + '.csv'
-            phot_file_to_write = output_files + '.phot'
+            if not (output_files.endswith('.dat') or output_files.endswith('.phot')):
+                phot_file_to_write = output_files + '.phot'
+            else:
+                phot_file_to_write = output_files
             phot = open(phot_file_to_write, 'w')
         else:
             file_to_write = "%s_%s_%s_Schedule.csv" % (observatory_name, self.name, obs_date.strftime('%Y%m%d'))
@@ -198,6 +201,9 @@ class Swope(Telescope.Telescope):
             header_row.append("Exposure Time")
             output_rows.append(header_row)
 
+            if output_files:
+                phot.write('# name ra dec filter exptime start_time_utc m3sigma \n')
+
             last_filter = C.r_band
             for t in targets:
                 ra = t.coord.ra.hms
@@ -208,10 +214,14 @@ class Swope(Telescope.Telescope):
                 dec_dms = hmsdms.split()[1]
 
                 if output_files:
-                    for filt in t.exposures.keys():
+                    for i,filt in enumerate(t.exposures.keys()):
 
-                        phot_line = '{name} {name} {ra} {dec} {filt} '+\
-                            '{exptime} {m3sigma} \n'
+                        start_time='--'
+                        if i==0:
+                            start_time = t.utc_start_time.strftime('%Y-%m-%dT%H:%M:%S')
+
+                        phot_line = '{name} {ra} {dec} {filt} '+\
+                            '{exptime} {start_time} {m3sigma} \n'
 
                         zeropoint = self.filters[filt]
                         exptime = t.exposures[filt]
@@ -219,6 +229,7 @@ class Swope(Telescope.Telescope):
 
                         phot_line = phot_line.format(name=t.name, ra=ra_hms,
                             dec=dec_dms, filt=filt, exptime=exptime,
+                            start_time=start_time,
                             m3sigma=m3sigma)
 
                         phot.write(phot_line)

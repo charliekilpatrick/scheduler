@@ -8,14 +8,16 @@ from astropy.time import Time
 
 import Telescope
 
-# Used with Las Campanas Observatory
+# Used with CTIO
 class T80S(Telescope.Telescope):
 
     def __init__(self):
         self.targets = None
-        self.name = "Swope"
+        self.name = "T80S"
 
-        #change as of Jun 4 after mirror cleaning
+        # Base overhead on observations (in seconds)
+        self.base_overhead = 60.
+
         self.filters = {
             C.u_band:15.05285437,
             C.g_band:16.4313935,
@@ -41,7 +43,10 @@ class T80S(Telescope.Telescope):
         exposures = {}
 
         # Compute the current guess at apparent magnitude
-        days_from_disc = (sn.obs_date - sn.disc_date).jd
+        if sn.obs_date is None or sn.ref_date is None:
+            days_from_disc = 0.
+        else:
+            days_from_disc = (sn.obs_date - sn.ref_date).jd
         mag_reduction = days_from_disc*0.03
         adj_app_mag = sn.apparent_mag + mag_reduction
         fmt = "days: %0.3f, mag red: %0.3f, adj mag: %0.3f"
@@ -53,28 +58,12 @@ class T80S(Telescope.Telescope):
         g_exp = self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.g_band])
         r_exp = self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.r_band])
         i_exp = self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.i_band])
-        V_exp = self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.V_band])
+        z_exp = self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.z_band])
 
-        # Specific to Swope -- make Vgri the same length exposure...
-        mean_exp = np.mean([V_exp,g_exp,r_exp,i_exp])
-        mean_exp = self.round_to_num(C.round_to, mean_exp)
-
-        exposures.update({C.g_band: mean_exp})
-        exposures.update({C.r_band: mean_exp})
-        exposures.update({C.i_band: mean_exp})
-
-        u_exp = self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.u_band]))
-        B_exp = self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.B_band]))
-
-        # print (B_exp)
-
-        if (mean_exp <= 540):
-            print("Target Name: %s; u_exp: %s, mean_exp: %s" % (sn.name, u_exp, mean_exp))
-            exposures.update({C.B_band: B_exp})
-            exposures.update({C.V_band: mean_exp})
-
-        if (mean_exp <= 300):
-            exposures.update({C.u_band: u_exp})
+        exposures.update({C.g_band: g_exp})
+        exposures.update({C.r_band: r_exp})
+        exposures.update({C.i_band: i_exp})
+        exposures.update({C.z_band: z_exp})
 
         # Finally, adjust exposures
         for key, value in exposures.items():
@@ -90,12 +79,12 @@ class T80S(Telescope.Telescope):
         s_to_n = 100
 
         # Don't know what the apparent mag should be?
-        exposures.update({C.u_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.u_band]))})
         exposures.update({C.g_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.g_band]))})
         exposures.update({C.r_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.r_band]))})
         exposures.update({C.i_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.i_band]))})
+        exposures.update({C.z_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.z_band]))})
 
-        # Finally, for standards round exps and don't go less than 10s, don't go more than 600s on Swope
+
         # Round to nearest "exp_round_to" secs
         for key, value in exposures.items():
             if exposures[key] < 10:
@@ -107,14 +96,14 @@ class T80S(Telescope.Telescope):
 
     def compute_template_exposure(self, tmp):
         exposures = {}
-        exposures.update({C.u_band: 1800})
         exposures.update({C.g_band: 1200})
         exposures.update({C.r_band: 1200})
         exposures.update({C.i_band: 1200})
+        exposures.update({C.z_band: 1500})
 
         tmp.exposures = exposures
 
-    def compute_gw_exposure(self, gw, s_n=5, filts=[C.r_band]):
+    def compute_gw_exposure(self, gw, s_n=5, filts=[C.i_band]):
         exposures = {}
 
         # Compute gw exposure
@@ -136,8 +125,8 @@ class T80S(Telescope.Telescope):
 
                 self.exp_funcs[tgt.type](tgt) # Sets exposures for each target by target type
 
-                # per observatory - LCO Swope
-                fudge_factor = 120. if len(tgt.exposures) > 0 else 0 # Build in a fudge factor based on # of exps GW
+                # per observatory
+                fudge_factor = self.base_overhead if len(tgt.exposures) > 0 else 0 # Build in a fudge factor based on # of exps GW
 
                 total_minutes = (sum(tgt.exposures.values()) + fudge_factor)/60. # Sum total minutes
                 tgt.total_minutes = round(total_minutes * 60./C.round_to) * C.round_to/60.
@@ -153,7 +142,7 @@ class T80S(Telescope.Telescope):
             if tgt.total_observable_min > 0:
                 tgt.fraction_time_obs = float(tgt.total_minutes)/float(tgt.total_observable_min)
 
-    def swope_filter_row(self, exp_name, exp_time):
+    def t80s_filter_row(self, exp_name, exp_time):
         filter_row = []
         filter_row.append(None)
         filter_row.append(None)
@@ -172,7 +161,7 @@ class T80S(Telescope.Telescope):
             phot_file_to_write = output_files + '.phot'
             phot = open(phot_file_to_write, 'w')
         else:
-            file_to_write = "%s_%s_%s_GoodSchedule.csv" % (observatory_name, self.name, obs_date.strftime('%Y%m%d'))
+            file_to_write = "%s_%s_Schedule.csv" % (self.name, obs_date.strftime('%Y%m%d'))
         if fieldcenters:
             fc = open(fieldcenters, 'w')
             fc.write('# field ampl ra dec epoch raD decD RAoffset DecOffset \n')
@@ -233,47 +222,14 @@ class T80S(Telescope.Telescope):
                 tgt_row.append(dec_field)
                 tgt_row.append(None)
 
-                # Last criterion: if previous obj had full 6 filters, but this target only has 3
-                if (last_filter == C.r_band) or \
-                   (last_filter == C.i_band) or \
-                    (last_filter == C.g_band) or \
-                    (last_filter == C.B_band and len(t.exposures) < 6):
+                output_rows.append(tgt_row)  #do not uncomment
 
-                    # tgt_row.append(C.r_band)   #comment out for GW
-                    # tgt_row.append(10) # Acquisition in r #comment out for GW
-                    output_rows.append(tgt_row)  #do not uncomment
+                # griz order
+                if C.g_band in t.exposures.keys(): output_rows.append(self.t80s_filter_row(C.g_band, t.exposures[C.g_band]))  #comment out for GW
+                if C.r_band in t.exposures.keys(): output_rows.append(self.t80s_filter_row(C.r_band, t.exposures[C.r_band]))  #comment out for GW
+                if C.i_band in t.exposures.keys(): output_rows.append(self.t80s_filter_row(C.i_band, t.exposures[C.i_band]))
+                if C.z_band in t.exposures.keys(): output_rows.append(self.t80s_filter_row(C.z_band, t.exposures[C.z_band]))
 
-                    # Start in riguVB order
-                    output_rows.append(self.swope_filter_row(C.r_band, t.exposures[C.r_band]))  #comment out for GW
-                    # output_rows.append(self.swope_filter_row(C.i_band, t.exposures[C.i_band]))
-                    # output_rows.append(self.swope_filter_row(C.g_band, t.exposures[C.g_band]))  #comment out for GW
-                    last_filter = C.g_band
-
-                    if len(t.exposures) > 3:
-                        if C.u_band in t.exposures:
-                            output_rows.append(self.swope_filter_row(C.u_band, t.exposures[C.u_band]))
-
-                        # output_rows.append(self.swope_filter_row(C.u_band, t.exposures[C.u_band]))
-                        output_rows.append(self.swope_filter_row(C.V_band, t.exposures[C.V_band]))
-                        output_rows.append(self.swope_filter_row(C.B_band, t.exposures[C.B_band]))
-                        last_filter = C.B_band
-
-                # Flip order: BVugir
-                else:
-                    tgt_row.append(C.B_band)
-                    tgt_row.append(20) # Acquisition in B
-                    output_rows.append(tgt_row)
-
-                    output_rows.append(self.swope_filter_row(C.B_band, t.exposures[C.B_band]))
-                    output_rows.append(self.swope_filter_row(C.V_band, t.exposures[C.V_band]))
-
-                    if C.u_band in t.exposures:
-                        output_rows.append(self.swope_filter_row(C.u_band, t.exposures[C.u_band]))
-
-                    output_rows.append(self.swope_filter_row(C.g_band, t.exposures[C.g_band]))
-                    output_rows.append(self.swope_filter_row(C.i_band, t.exposures[C.i_band]))
-                    output_rows.append(self.swope_filter_row(C.r_band, t.exposures[C.r_band]))
-                    last_filter = C.r_band
 
             writer.writerows(output_rows)
 

@@ -24,6 +24,8 @@ class Target:
         self.obs_date = obs_date
         self.halimit = halimit
 
+        self.utc_start_time = None
+
         self.raw_airmass_array = None
         self.peak_airmass_idx = None
         self.peak_airmass_val = None

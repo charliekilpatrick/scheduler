@@ -38,7 +38,11 @@ class Thacher(Telescope.Telescope):
         exposures = {}
 
         # Compute the current guess at apparent magnitude
-        days_from_disc = (sn.obs_date - sn.disc_date).jd
+        if sn.obs_date is None or sn.ref_date is None:
+            days_from_disc = 0.
+        else:
+            days_from_disc = (sn.obs_date - sn.ref_date).jd
+
         mag_reduction = days_from_disc*0.03
         adj_app_mag = sn.apparent_mag + mag_reduction
 
@@ -51,11 +55,6 @@ class Thacher(Telescope.Telescope):
 
         exposures.update({C.r_prime: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.r_prime]))})
         exposures.update({C.i_prime: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.i_prime]))})
-
-        # Only include these exposures if a relatively new SN
-        if days_from_disc < 60:
-            exposures.update({C.B_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.B_band]))})
-            exposures.update({C.V_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.V_band]))})
 
         # Finally, don't go less than 45s (~ readout time), don't go more than 600s on Swope
         for key, value in exposures.items():
@@ -153,7 +152,7 @@ class Thacher(Telescope.Telescope):
             phot_file_to_write = output_files + '.phot'
             phot = open(phot_file_to_write, 'w')
         else:
-            file_to_write = "%s_%s_%s_GoodSchedule.csv" % (observatory_name, self.name, obs_date.strftime('%Y%m%d'))
+            file_to_write = "%s_%s_Schedule.csv" % (self.name, obs_date.strftime('%Y%m%d'))
         if fieldcenters:
             fc = open(fieldcenters, 'w')
             fc.write('# field ampl ra dec epoch raD decD RAoffset DecOffset \n')

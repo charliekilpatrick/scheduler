@@ -5,7 +5,9 @@ from astropy.coordinates import SkyCoord
 from astropy.io import ascii
 from astropy.time import Time
 from astropy.table import unique, Column
-import csv, requests, sys, numpy as np
+import csv, requests, sys, numpy as np, copy
+
+from requests.auth import HTTPBasicAuth
 
 target_table_names = ('name', 'ra', 'dec', 'priority', 'date', 'mag', 'type')
 target_table_row   = [['X' * 40], [0.], [0.], [0.0],
@@ -77,9 +79,20 @@ def blank_target_table():
 # distance modulus for a gravitational wave event (DISTMEAN from healpix),
 # which will be used to calculate the exposure time required
 def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
-    priority=1.0):
+    priority=1.0, username='', password=''):
 
-    data_table = ascii.read(file_name, delimiter=',')
+    if 'https://' in file_name or 'http://' in file_name:
+        # Assume URL
+        url = copy.copy(file_name)
+        auth = HTTPBasicAuth(username, password)
+        response = requests.get(url, auth=auth)
+        if response.status_code==200:
+            file_name = response.text
+        else:
+            raise Exception(f'ERROR: could not download targets from {url}.\n'+\
+                'Did you remember to pass authentication (--username/--password)?')
+
+    data_table = ascii.read(file_name)
 
     # Sanitize columns
     for key in data_table.keys():
@@ -91,8 +104,12 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
             data_table.rename_column(key, 'ra')
         if key in ['fielddec','declination','dec.']:
             data_table.rename_column(key, 'dec')
-        if key in ['fieldname','object']:
+        if key in ['fieldname','object','field_name']:
             data_table.rename_column(key, 'name')
+        if key in ['prob']:
+            data_table.rename_column(key, 'priority')
+
+    print(data_table)
 
     if len(data_table) > max_length:
         data_table.sort('priority')

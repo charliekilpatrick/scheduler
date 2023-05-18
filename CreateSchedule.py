@@ -39,7 +39,8 @@ def main():
     # If a target list is provided via the file name then use it
     if file_name is not None:
         target_data = Utilities.get_targets(file_name, gw=args.gw, 
-            target_mag=target_mag)
+            target_mag=target_mag, username=args.username, 
+            password=args.password)
     # Otherwise download a target list from YSE PZ
     else:
         message = '\n\nDownloading target list for {tel}...\n\n'

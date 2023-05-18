@@ -166,10 +166,10 @@ class Observatory():
 
         # Need to flip their starting indices around.  tgt2 is obvious since we
         # simply set the starting index to whatever tgt1 currently is
-        tgt2.starting_index = targets[idx].starting_index
+        tgt2.starting_index = tgt1.starting_index
 
         # For tgt1, need to account for when tgt2 will end
-        tgt1.starting_index = targets[idx].starting_index + int(tgt2.total_minutes * 60./C.round_to)
+        tgt1.starting_index = tgt1.starting_index + int(tgt2.total_minutes * 60./C.round_to)
 
         newtargets = copy.deepcopy(targets)
         newtargets[idx] = tgt2
@@ -269,10 +269,10 @@ class Observatory():
             goodtime_len = len(goodtime[0])*C.round_to/60.
             if goodtime_len < tgt.total_minutes:
                 return(None)
-            end=int(tgt.total_minutes*60./C.round_to-1.)
+            end=int(tgt.total_minutes*60./C.round_to)
             for m in range(len(goodtime[0][:-end])):
                 # Exclude sparse intervals t_i - t_0 > 45 min
-                start=int(m+tgt.total_minutes*60./C.round_to-1)
+                start=int(m+tgt.total_minutes*60./C.round_to)
                 if (goodtime[0][start] - goodtime[0][m])*C.round_to/60. < 45:
                     m_start = m
             return m_start
@@ -280,7 +280,7 @@ class Observatory():
         def squeeze(tgt_i, targets, m_start):
             """ Move the scheduled time of the affected tiles to make room for a new tile """
             for tt in targets[:tgt_i]:
-                affected_ind_up = goodtime[0][int(m_start + (tgt.total_minutes*60./C.round_to - 1))]
+                affected_ind_up = goodtime[0][int(m_start + (tgt.total_minutes*60./C.round_to))]
                 affected_ind_low = goodtime[0][m_start]
                 if (tt.starting_index < affected_ind_up) and (tt.starting_index > affected_ind_low):
                     ind_increment = len(np.where(goodtime[0][m_start : m_start + int(tgt.total_minutes*60./C.round_to)] > tt.starting_index)[0])
@@ -472,6 +472,9 @@ class Observatory():
                 bar.update(i)
                 swap = self.swap(o, i)
 
+                if not self.is_allowed(swap):
+                    continue
+
                 if (self.compute_integrated_am(self.swap(o, i)) <
                     self.compute_integrated_am(o)):
 
@@ -499,7 +502,8 @@ class Observatory():
             print(fmt)
 
             # Also get UTC start time
-            #tgt.utc_start_time = self.utc_time_array[tgt.starting_index]
+            tgt.utc_start_time = self.utc_time_array[tgt.starting_index]
+            print(tgt.starting_index)
 
 
         self.compute_night_fill_fraction(o)

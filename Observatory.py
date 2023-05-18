@@ -499,7 +499,7 @@ class Observatory():
             print(fmt)
 
             # Also get UTC start time
-            tgt.utc_start_time = self.utc_time_array[tgt.starting_index]
+            #tgt.utc_start_time = self.utc_time_array[tgt.starting_index]
 
 
         self.compute_night_fill_fraction(o)

@@ -109,8 +109,6 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
         if key in ['prob']:
             data_table.rename_column(key, 'priority')
 
-    print(data_table)
-
     if len(data_table) > max_length:
         data_table.sort('priority')
         data_table.reverse()

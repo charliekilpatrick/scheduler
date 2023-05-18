@@ -25,8 +25,6 @@ def add_options():
         help="Base name of the output schedule file (csv) and summary (png).")
     parser.add_argument("-fc", "--fieldcenter",
         help="Name of the output ordered fieldcenters file with targets.")
-    parser.add_argument("-tm","--target_mag",
-        help="Target limiting (absolute) magnitude for GW exposures.")
     parser.add_argument("--target", default=-17.0, type=float,
         help="Target mag for gravitational wave observations.")
     parser.add_argument("--usecat", default=False, action='store_true',

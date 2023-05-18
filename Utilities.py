@@ -132,9 +132,7 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
         else:
             new_row['type'] = 'SN'
 
-        if 'mag' in row.colnames and 'mag' not in new_row.keys():
-            new_row['mag'] = row['mag']
-        else:
+        if 'mag' not in new_row.keys():
             new_row['mag'] = 19.0
 
         new_row['date'] = Time(datetime.now())

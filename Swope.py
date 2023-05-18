@@ -127,11 +127,11 @@ class Swope(Telescope.Telescope):
         exposures = {}
 
         # Compute gw exposure
-        s_to_n = 5.
-        r_exp = self.time_to_S_N(s_to_n, gw.apparent_mag, self.filters[C.r_band])
-        mean_exp = self.round_to_num(C.round_to, r_exp)
+        s_to_n = 3.
+        i_exp = self.time_to_S_N(s_to_n, gw.apparent_mag, self.filters[C.i_band])
+        mean_exp = self.round_to_num(C.round_to, i_exp)
 
-        exposures.update({C.r_band: mean_exp})
+        exposures.update({C.i_band: mean_exp})
 
         gw.exposures = exposures
 

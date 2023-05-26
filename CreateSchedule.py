@@ -92,7 +92,7 @@ def main():
                 )
             )
 
-            obs.telescopes[tele_keys[i]].set_targets(targets)
+        obs.telescopes[tele_keys[i]].set_targets(targets)
 
         print("# of %s targets: %s" % (tele_keys[i], len(targets)))
         print("First %s target: %s" % (tele_keys[i], targets[0].name))

@@ -1,14 +1,14 @@
 import Constants as C
 from Target import TargetType, Target
 import Logs
+import Telescope
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np, csv, sys
 from astropy.time import Time
 
+from dateutil.parser import parse
 import os
-
-import Telescope
 
 # Used with Lick Observatory
 class Nickel(Telescope.Telescope):
@@ -68,13 +68,11 @@ class Nickel(Telescope.Telescope):
         if B_exp <= 900:
             exposures.update({C.B_band: self.round_to_num(C.round_to, B_exp)})
 
-        # Finally, don't go less than 45s (~ readout time), don't go more than 600s on Swope
+        # Finally, don't go less than 90s (~ readout time)
         for key, value in exposures.items():
 
-            if exposures[key] < 180:
-                exposures[key] = 180
-            elif exposures[key] > 900:
-                exposures[key] = 900
+            if exposures[key] < 90:
+                exposures[key] = 90
 
         sn.exposures = exposures
 
@@ -168,14 +166,18 @@ class Nickel(Telescope.Telescope):
             fc.write('# field ampl ra dec epoch raD decD RAoffset DecOffset \n')
 
         # Initialize Google sheets methods for Nickel
-        if ('OBSERVERS_SHEET' in os.environ.keys() and 
+        if ('NICKEL_SCHEDULE_SHEET' in os.environ.keys() and 
             'GSHEETS_TOKEN' in os.environ.keys() and
-            'TEMPLATE_SHEET' in os.environ.keys()):
-            params = Logs.gsheets_params(os.environ['GSHEETS_TOKEN'], 
-                                         os.environ['TEMPLATE_SHEET'])
-            observers_sheet = params['OBSERVERS_SHEET']
-            observer, night = Logs.check_if_tel_on_date(sheet, observers_sheet,
-                obs_date)
+            'NICKEL_TEMPLATE_SHEET' in os.environ.keys() and
+            'NICKEL_OBSERVERS_SHEET' in os.environ.keys()):
+            params = Logs.gsheets_params(os.environ['NICKEL_SCHEDULE_SHEET'], 
+                os.environ['NICKEL_TEMPLATE_SHEET'], 
+                os.environ['GSHEETS_TOKEN'],
+                observers_sheet=os.environ['NICKEL_OBSERVERS_SHEET'])
+
+            sheet = Logs.initiate_gsheet(params['gsheets_token'])
+            (observer, night) = Logs.check_if_tel_on_date(sheet, 
+                params['OBSERVERS_SHEET'], parse(obs_date.strftime('%Y%m%d')))
 
             # Make an empty Nickel log
             success = Logs.copy_log(sheet, params['TEMPLATE'], 'Nickel Log',

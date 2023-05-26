@@ -259,7 +259,7 @@ class Observatory():
         return(targets)
 
 
-    def schedule_targets(self, telescope_name, preview_plot=False, asap=False,
+    def schedule_targets(self, telescope_name, preview_plot=False,
         output_files=None, fieldcenters=None, cat_params={}, obs_date=None):
 
         # Update internal Target list with priorities and exposures
@@ -277,11 +277,11 @@ class Observatory():
             # Recompute exposures and priorities for new telescope night
             targets_copy = []
             for tgt in targets:
-                tgt.initialize_airmass(self.lat, self.sidereal_radian_array,
-                    halimit=tgt.halimit)
-                targets_copy.append(tgt)
+                tgt.initialize_airmass(self.ephemeris.lat, 
+                    self.sidereal_radian_array, halimit=tgt.halimit)
+                targets_copy.append(copy.deepcopy(tgt))
 
-            telescope.targets = targets_copy
+            telescope.set_targets(copy.deepcopy(targets_copy))
             telescope.compute_exposures()
             telescope.compute_net_priorities()
             targets = telescope.get_targets()
@@ -313,10 +313,7 @@ class Observatory():
             return affected_ind_low
 
         # Sorted by priority and closeness to discovery
-        if asap:
-            targets.sort(key = operator.attrgetter('priority'))
-        else:
-            targets.sort(key = operator.attrgetter('net_priority'))
+        targets.sort(key = operator.attrgetter('net_priority'))
 
         length_of_night = len(self.utc_time_array)
         targets = self.filter_targets(targets)
@@ -351,27 +348,26 @@ class Observatory():
 
                 for i in range(n):
                     current_start += 1 # start index
-                    end = int(current_start + tgt.total_minutes*60./C.round_to) # how many
-                    candidate_indices = goodtime[0][current_start:end] # array of selected indices
-                    # Check if this associated integrated airmass corresponds to a range of time that's contiguous
+                    # how many
+                    end = int(current_start + tgt.total_minutes*60./C.round_to) 
+                    # array of selected indices
+                    candidate_indices = goodtime[0][current_start:end]
+                    # Check if this associated integrated airmass corresponds 
+                    # to a range of time that's contiguous
                     contiguous = self.is_contiguous(candidate_indices)
                     if len(candidate_indices) != int(tgt.total_minutes*60./C.round_to) or not contiguous: # If this is at the end of the array, it won't be the size we need
                         continue
 
                     else:
-                        # Compute the integrated airmass. We're looking for the smallest # => the best conditions
+                        # Compute the integrated airmass. We're looking for the 
+                        # smallest # => the best conditions
                         integrated_am = np.sum(gam1[candidate_indices])
-                        if asap:
-                            if (integrated_am <= (C.airmass_threshold * tgt.total_minutes *60./C.round_to)):
-                                largest_airmass = integrated_am
-                                best_indices = candidate_indices
-                                break
+                        if integrated_am < largest_airmass and contiguous:
+                        # if this is the smallest, and is for a contiguous span 
+                        # of time, it's the new one to beat
+                            largest_airmass = integrated_am
+                            best_indices = candidate_indices
 
-                        else:
-                        # if this is the smallest, and is for a contiguous span of time, it's the new one to beat
-                            if integrated_am < largest_airmass and contiguous:
-                                largest_airmass = integrated_am
-                                best_indices = candidate_indices
 
                 if largest_airmass < 1e+6:
 
@@ -387,21 +383,12 @@ class Observatory():
                     if not self.is_allowed(o):
                         o.remove(tgt)
                         found = False
+                    print('Successfully included field %i: %s %.3E' %(tgt_i, tgt.name, 1./tgt.priority/1000))
                 else:
                     m_start = packable(goodtime, tgt)
-                    if asap and (m_start is not None):
-                        tgt.starting_index = squeeze(tgt_i, targets, m_start)
-                        o.append(tgt)
-                        print('Successfully included field %i: %s %.3E' %(tgt_i, tgt.name, 1./tgt.priority/1000))
-                        found = True
-                        best_indices = np.arange(tgt.starting_index, tgt.starting_index + 4)
-                        tgt.scheduled_airmass_array = np.asarray(tgt.raw_airmass_array)[best_indices]
-                        tgt.scheduled_time_array = np.asarray(self.local_time_array)[best_indices]
-                        break
-                    else:
-                        print("Can't fit %s. Skipping!" % tgt.name)
-                        bad_o.append(tgt)
-                        break
+                    print("Can't fit %s. Skipping!" % tgt.name)
+                    bad_o.append(tgt)
+                    break
 
         print('\n\nCurrent schedule:')
         o = sorted(o, key = operator.attrgetter('starting_index'))

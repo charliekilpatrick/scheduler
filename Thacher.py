@@ -53,12 +53,13 @@ class Thacher(Telescope.Telescope):
         elif days_from_disc > 10 and days_from_disc <= 60:
             s_to_n = 20
 
-        exposures.update({C.r_prime: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.r_prime]))})
-        exposures.update({C.i_prime: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.i_prime]))})
+        exposures.update({C.r_prime: self.round_to_num(C.round_to, 
+            self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.r_prime]))})
+        exposures.update({C.i_prime: self.round_to_num(C.round_to, 
+            self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.i_prime]))})
 
         # Finally, don't go less than 45s (~ readout time), don't go more than 600s on Swope
         for key, value in exposures.items():
-
             if exposures[key] < 45:
                 exposures[key] = 45
             elif exposures[key] > 600:
@@ -71,10 +72,14 @@ class Thacher(Telescope.Telescope):
         s_to_n = 100
 
         # Don't know what the apparent mag should be?
-        exposures.update({C.r_prime: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.r_prime]))})
-        exposures.update({C.i_prime: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.i_prime]))})
-        exposures.update({C.B_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.B_band]))})
-        exposures.update({C.V_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.V_band]))})
+        exposures.update({C.r_prime: self.round_to_num(C.round_to, 
+            self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.r_prime]))})
+        exposures.update({C.i_prime: self.round_to_num(C.round_to, 
+            self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.i_prime]))})
+        exposures.update({C.B_band: self.round_to_num(C.round_to, 
+            self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.B_band]))})
+        exposures.update({C.V_band: self.round_to_num(C.round_to, 
+            self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.V_band]))})
 
         # Finally, don't go less than 10s for Nickel std, don't go more than 600s on Nickel
         for key, value in exposures.items():
@@ -143,6 +148,214 @@ class Thacher(Telescope.Telescope):
         filter_row.append(exp_time)
 
         return filter_row
+
+    def make_observation_dict(self, name,
+        observer = 'Charlie Kilpatrick', max_airmass = 2.5, priority = 50,
+        num_images = '1', interval = '0', iterate = '1', focus_on = 'False',
+        bestefforts = 'True', pa = 0, binvalue = 1,
+        project_name = 'Thacher Gravitational Wave Astronomy (TGWA)',
+        description = 'Gravitational Wave follow up by Thacher Observatory'):
+
+        default = {
+            'Request': {
+                'bestefforts': bestefforts,
+                'ID': {
+                    'name': name
+                },
+                'UserName': {
+                    'name': observer
+                },
+                'Observers': {
+                    'name': observer
+                },
+                'Description': {
+                    'name': description
+                },
+                'Reason': {
+                    'name': 'Monitor=1'
+                },
+                'Project': {
+                    'name': project_name
+                },
+                'Schedule': {
+                    'Airmass': {
+                        'name': max_airmass
+                    },
+                    'Priority': {
+                        'name': priority
+                    }
+                }
+            }
+        }
+
+        return(default)
+
+    def make_target_dict(self, objname, coord, filt, exptime,
+        observer = 'Charlie Kilpatrick', max_airmass = 2.5, priority = 1000,
+        num_images = '1', interval = '0', iterate = '1', focus_on = 'False',
+        bestefforts = 'True', pa = 0, binvalue = 1,
+        project_name = 'Thacher Gravitational Wave Astronomy (TGWA)',
+        description = 'Gravitational Wave follow up by Thacher Observatory'):
+
+        ra_deg = coord.ra.degree
+        dec_deg = coord.dec.degree
+
+        default = {
+            'Target': {
+                    'count': num_images,
+                    'interval': interval,
+                    'autofocus': focus_on,
+                    'Name': {
+                        'name': objname
+                    },
+                    'Description': {
+                        'name': description
+                    },
+                    'Coordinates': {
+                        'RightAscension': {
+                            'name': ra_deg
+                        },
+                        'Declination': {
+                            'name': dec_deg
+                        }
+                    },
+                    'PositionAngle': {
+                        'name': pa
+                    },
+                    'Picture': {
+                        'count': iterate,
+                        'Name': {
+                            'name': filt
+                        },
+                        'ExposureTime': {
+                            'name': exptime
+                        },
+                        'Binning': {
+                            'name': binvalue
+                        },
+                        'Filter': {
+                            'name': filt
+                        }
+                    }
+                }
+            }
+
+        return(default)
+
+    def make_header_dict(contact = 'Charlie Kilpatrick',
+        email = 'ckilpatrick@northwestern.edu', xml_version = '1.0',
+        encoding = 'ISO-8859-1', RTML_version = '2.3'):
+        default = {
+            'RTML': {
+                'version': RTML_version,
+                'Contact': {
+                    'User': {
+                        'name': contact
+                    },
+                    'Email': {
+                        'name': email
+                    }
+                }
+            }
+        }
+
+        return(default)
+
+    def dicttoxml(self, file, dictionary, depth = 0, name_name = 'name', order = []):
+
+        if not order:
+            it = dictionary
+        else:
+            requests=[]
+            for item in dictionary.keys():
+                if 'Request' in item:
+                    requests.append(item)
+            it = [requests if x=='Request' else [x] for x in order]
+            it = list(itertools.chain.from_iterable(it))
+        for item in it:
+            if item not in dictionary.keys():
+                continue
+            # Special case with xml header
+            if (item is 'xml'):
+                ver = dictionary[item]['version']
+                enc = dictionary[item]['encoding']
+                append = ' version=\"{0}\" endocing=\"{1}\"'.format(ver, enc)
+                file.write('<?{0}{1}?>'.format(item,append)+'\n')
+            else:
+                # Special case with one line xml
+                try:
+                    val = dictionary[item][name_name]
+                    file.write('\t'*depth+'<{0}>{1}</{0}>'.format(item,val)+'\n')
+                except:
+                    # Fix unique 'Request' key issue
+                    # i.e., can't have more than one key
+                    # in dict called 'Request'
+                    item_name = item
+                    if ('Request' in item_name):
+                        item_name = 'Request'
+                    append = ''
+                    if isinstance(dictionary[item],dict):
+                        for item2 in dictionary[item]:
+                            if not isinstance(dictionary[item][item2], dict):
+                                if isinstance(dictionary[item][item2], str):
+                                    append += ' ' + item2 + '=\"' +\
+                                        dictionary[item][item2]+'\"'
+                                else:
+                                    append += ' ' + item2 + '=' +\
+                                        dictionary[item][item2]
+                        line = '\t' * depth + '<{0}{1}>'
+                        file.write(line.format(item_name, append) + '\n')
+                        dicttoxml(file, dictionary[item], depth = depth+1,
+                            name_name=name_name, order=order)
+                        line = '\t' * depth + '</{0}>'
+                        file.write(line.format(item_name, append) + '\n')
+
+    def serialize_xml(self, targets, outfile):
+
+        xml_header = self.make_header_dict()
+
+        f = open(outfile, 'w')
+        i = 0
+
+        # Make an observation Request object
+        for tgt in targets:
+            ra = tgt.coord.ra.degree
+            dec = tgt.coord.dec.degree
+            for filt in tgt.exposures.keys():
+
+                number = str(i).zfill(7)
+                exptime = str(t.exposures[filt])  
+                filt = str(filt)
+
+                obs = self.make_observation_dict(o, priority = 100,
+                    project_name='Thacher Gravitational Wave templates')
+
+                xml_header['RTML']['Request'+number] = obs['Request']
+
+                target = self.make_target_dict(tgt.name.lower(), str(ra), 
+                    str(dec), filt, str(t.exposures[filt]))
+
+                xml_header['RTML']['Request'+number]['Target']=target['Target']
+
+                i += 1
+
+        # This is the order that the keys need to have in the final
+        # xml file.  Dictionaries don't preserve order whereas the
+        # Thacher software cares about the order of each key.
+        # The dicttoxml function will write out keys for each layer
+        # in the order specified here.
+        order = ['xml', 'version', 'encoding', 'RTML', 'Contact', 'User',
+                     'Email', 'Request', 'ID' , 'UserName',
+                     'Observers', 'Name', 'Description', 'Reason',
+                     'Project', 'Schedule', 'Airmass', 'Priority',
+                     'Target', 'count', 'interval', 'autofocus',
+                     'Coordinates', 'RightAscension', 'Declination',
+                     'Picture', 'ExposureTime', 'Binning', 'Filter']
+        dicttoxml(f, xml_header, depth = 0, name_name = 'name', order = order)
+
+        f.close()
+
+
 
     def write_schedule(self, observatory_name, obs_date, targets, output_files=None,
         fieldcenters=None, pointing=None):

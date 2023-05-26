@@ -18,9 +18,11 @@ def add_options():
         help="Desired End Time in the format of HHMM")
     parser.add_argument("--post",
         help="Post the schedule to the Google sheet for Swope or Nickel")
-    parser.add_argument("--gw",
+    parser.add_argument("--gw", nargs='?', const=1.0, type=float,
         help="The input targets are for a gravitational wave event.  Also"+\
         " append the preferred distance modulus for the event.")
+    parser.add_argument("--outdir", type=str, default='.',
+        help="Base directory for output from the scheduler.")
     parser.add_argument("-o", "--output",
         help="Base name of the output schedule file (csv) and summary (png).")
     parser.add_argument("-fc", "--fieldcenter",

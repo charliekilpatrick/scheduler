@@ -7,6 +7,8 @@ from astropy.time import Time
 from astropy.table import unique, Column
 import csv, requests, sys, numpy as np, copy
 
+from astroquery.mast import Catalogs
+
 from requests.auth import HTTPBasicAuth
 
 target_table_names = ('name', 'ra', 'dec', 'priority', 'date', 'mag', 'type')
@@ -108,6 +110,12 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
             data_table.rename_column(key, 'name')
         if key in ['prob']:
             data_table.rename_column(key, 'priority')
+        if key in ['lum_dist','distance']
+            # Assume distance in Mpc
+            distance = data_table[key]
+            if 'dm' not in data_table.keys():
+                dm = 5. * np.log10(data_table[key].data.astype('float')) + 25.
+                data_table.add_column(Column(dm, name='dm'))
 
     if len(data_table) > max_length:
         data_table.sort('priority')
@@ -122,7 +130,10 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
         new_row = {}
         if gw: 
             new_row['type'] = 'GW'
-            new_row['mag'] = target_mag+float(gw)
+            if 'dm' in row.colnames:
+                new_row['mag'] = target_mag+row['dm']
+            else:
+                new_row['mag'] = target_mag+float(gw)
             # Check if A_lambda is in table
             if 'a_lambda' in data_table.keys():
                 # Adjust the magnitudes to account for a_lambda
@@ -144,7 +155,7 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
         new_row['priority'] = row['priority']
 
         # Reprioritize by approximate priority
-        new_row['priority'] = np.max(priority_data) + 1.0 - np.log10(row['priority'])
+        new_row['priority'] = np.max(priority_data)+1.0-np.log10(row['priority'])
 
         table.add_row(new_row)
 
@@ -233,3 +244,27 @@ def download_targets(url):
         targets['priority'] = max_priority - targets['priority']
 
         return(targets)
+
+def download_ps1_catalog(target, Mmax=18.0, radius=0.05):
+        
+    coord = target.coord
+    cat = Catalogs.query_region(str(coord.ra.degree)+' '+\
+        str(coord.dec.degree), radius=2*radius,
+        catalog="Panstarrs", data_release="dr2", table="mean")
+
+    cat = cat.filled()
+    mask = (cat['raStack'] < 360.0) & (cat['decStack'] < 90.0)
+    cat = cat[mask]
+
+    coords = SkyCoord(cat['raStack'], cat['decStack'], unit='deg')
+    mask = coords.separation(coord) < radius * u.degree
+    cat = cat[mask]
+
+    mask = (cat['gMeanPSFMag'] < Mmax) & (cat['gMeanPSFMag'] > 0) &\
+            (cat['rMeanPSFMag'] < Mmax) & (cat['rMeanPSFMag'] > 0) &\
+            (cat['iMeanPSFMag'] < Mmax) & (cat['iMeanPSFMag'] > 0) &\
+            (cat['zMeanPSFMag'] < Mmax) & (cat['zMeanPSFMag'] > 0) &\
+            (cat['yMeanPSFMag'] < Mmax) & (cat['yMeanPSFMag'] > 0)
+    cat = cat[mask]
+
+    return(cat)

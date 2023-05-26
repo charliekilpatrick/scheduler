@@ -1,6 +1,7 @@
 import Constants as C
 import Telescope
 from Utilities import UTC_Offset
+from Utilities import download_ps1_catalog
 
 import ephem
 from dateutil.parser import parse
@@ -19,31 +20,7 @@ from astroquery.vizier import Vizier
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.table import Column, Table
-from astroquery.mast import Catalogs
 from astropy.time import Time
-
-def download_ps1catalog(target, Mmax=18.0, radius=0.05):
-        coord = target.coord
-        cat = Catalogs.query_region(str(coord.ra.degree)+' '+\
-            str(coord.dec.degree), radius=2*radius,
-            catalog="Panstarrs", data_release="dr2", table="mean")
-
-        cat = cat.filled()
-        mask = (cat['raStack'] < 360.0) & (cat['decStack'] < 90.0)
-        cat = cat[mask]
-
-        coords = SkyCoord(cat['raStack'], cat['decStack'], unit='deg')
-        mask = coords.separation(coord) < radius * u.degree
-        cat = cat[mask]
-
-        mask = (cat['gMeanPSFMag'] < Mmax) & (cat['gMeanPSFMag'] > 0) &\
-               (cat['rMeanPSFMag'] < Mmax) & (cat['rMeanPSFMag'] > 0) &\
-               (cat['iMeanPSFMag'] < Mmax) & (cat['iMeanPSFMag'] > 0) &\
-               (cat['zMeanPSFMag'] < Mmax) & (cat['zMeanPSFMag'] > 0) &\
-               (cat['yMeanPSFMag'] < Mmax) & (cat['yMeanPSFMag'] > 0)
-        cat = cat[mask]
-
-        return(cat)
 
 class Observatory():
     def __init__(self, name, lon, lat, elevation, horizon, telescopes,
@@ -109,6 +86,8 @@ class Observatory():
 
         # Total time in night
         timeDiff = self.local_end_night - self.local_begin_night
+
+        # In units of C.round_to seconds, this is the length of the night
         self.length_of_night = int(round(timeDiff.total_seconds()/C.round_to))
 
         self.utc_time_array = np.asarray([self.utc_begin_night +\
@@ -236,6 +215,50 @@ class Observatory():
 
         return(newdate)
 
+    # Filter targets based on certain criteria
+    def filter_targets(self, targets, cat_params={}, max_time=None):
+
+        remove_targets = []
+
+        if cat_params:
+            for i,target in enumerate(targets):
+                Mmax = cat_params['cat_maxmag']
+                radius = cat_params['cat_radius']
+                catdir = cat_params['cat_directory']
+                filename = catdir + '/' + target.name + '.cat'
+                if os.path.exists(filename):
+                    cat = Table.read(filename, format='ascii')
+                else:
+                    print('Downloading catalog for:',target.name,
+                        target.coord.ra.degree, target.coord.dec.degree)
+                    cat = download_ps1_catalog(target, Mmax=22.0, radius=radius)
+                    cat.write(filename, overwrite=True, format='ascii')
+
+                m='Got catalog: {0} with {1} sources'.format(filename, len(cat))
+                print(m)
+
+                if len(cat) < cat_params['cat_nsources']:
+                    print('Removing:',target.name,len(cat))
+                    remove_targets.append(target.name)
+
+        for i,target in enumerate(targets):
+            fmt = '{name}: {exposures}; {total} min; Priority: {priority}'
+            fmt = fmt.format(name=target.name, exposures=target.exposures,
+                total=target.total_minutes, priority='%.2f'%target.priority)
+
+            print(fmt)
+
+            # Get rid of targets whose observations can't fit in observable time
+            # and with some exposure time
+            if ((self.length_of_night * C.round_to/60. < target.total_minutes) or
+                (target.total_minutes_only_exposures <= 0)):
+                remove_targets.append(target.name)
+
+        targets = [t for t in targets if t.name not in remove_targets]
+
+        return(targets)
+
+
     def schedule_targets(self, telescope_name, preview_plot=False, asap=False,
         output_files=None, fieldcenters=None, cat_params={}, obs_date=None):
 
@@ -295,61 +318,17 @@ class Observatory():
         else:
             targets.sort(key = operator.attrgetter('net_priority'))
 
-        length_of_night = len(self.utc_time_array) # In minutes
-
-        targets_copy = []
-        for tgt in targets:
-            fmt = '{name}: {exposures}; {total} min; Priority: {priority}'
-            fmt = fmt.format(name=tgt.name, exposures=tgt.exposures,
-                total=tgt.total_minutes, priority='%7.4f'%tgt.priority)
-            print(fmt)
-
-            # Get rid of targets whose observations can't fit in observable time
-            # and with some exposure time
-            if (tgt.total_observable_min >= tgt.total_minutes and
-                tgt.total_minutes_only_exposures>0):
-                targets_copy.append(tgt)
+        length_of_night = len(self.utc_time_array)
+        targets = self.filter_targets(targets)
 
         print('\n\nScheduling targets:\n\n')
-
-        targets = targets_copy
-        targets.sort(key = operator.attrgetter('priority'))
 
         time_slots = np.zeros(length_of_night)
         o = []
         bad_o = []
 
-        if cat_params:
-            if cat_params['usecat']:
-                print('\n\nUsing catalogs...')
-                remove_targets = []
-                for i,target in enumerate(targets):
-                    Mmax = cat_params['cat_maxmag']
-                    radius = cat_params['cat_radius']
-                    catdir = cat_params['cat_directory']
-                    filename = catdir + '/' + target.name + '.cat'
-                    if os.path.exists(filename):
-                        cat = Table.read(filename, format='ascii')
-                    else:
-                        print('Downloading catalog for:',target.name,
-                            target.coord.ra.degree, target.coord.dec.degree)
-                        cat = download_ps1catalog(target, Mmax=22.0,
-                            radius=radius)
-                        cat.write(filename, overwrite=True, format='ascii')
-
-                    mask = cat['gMeanPSFMag'] < Mmax
-                    cat = cat[mask]
-
-                    m='Got catalog: {0} with {1} sources'.format(filename,
-                        len(cat))
-                    print(m)
-
-                    if len(cat) < cat_params['cat_nsources']:
-                        print('Removing:',target.name,len(cat))
-                        remove_targets.append(target)
-
-                targnames = [t.name for t in remove_targets]
-                targets = [t for t in targets if t not in remove_targets]
+        if cat_params and 'usecat' in cat_params.keys() and cat_params['usecat']:
+            targets = self.filter_targets(targets, cat_params=cat_params)
 
         for tgt_i, tgt in enumerate(targets):
 
@@ -458,41 +437,7 @@ class Observatory():
         if idx-1 > 0:
             o = o[idx:]+o[0:idx-1]
 
-        if len(o)>1:
-            # Check if we can get a more efficient ordering of targets
-            print('\n\nAttempting to optimize schedule ordering...')
-            message = 'Iterating'
-            bar = progressbar.ProgressBar(maxval=len(o)-1)
-            bar.start()
-            for i,tgt in enumerate(o):
-                if i==len(o)-1:
-                    bar.update(i)
-                    continue
-
-                bar.update(i)
-                swap = self.swap(o, i)
-
-                if not self.is_allowed(swap):
-                    continue
-
-                if (self.compute_integrated_am(self.swap(o, i)) <
-                    self.compute_integrated_am(o)):
-
-                    o = copy.deepcopy(self.swap(o, i))
-                    idx = i-1
-
-                    while ((self.compute_integrated_am(self.swap(o, idx)) <
-                        self.compute_integrated_am(o)) and idx!=0):
-
-                        o = copy.deepcopy(self.swap(o, idx))
-                        idx = i-1
-
-            bar.finish()
-
-        # Resort targets
-        o = sorted(o, key=lambda tgt: tgt.starting_index)
-
-        print('\n\nOptimized schedule:')
+        print('\n\nFinal schedule:')
         for tgt in o:
             fmt = '{name:<22}: {exposures:<32}; {total:<5} min; Priority: {priority}'
             fmt = fmt.format(name=tgt.name,
@@ -503,7 +448,6 @@ class Observatory():
 
             # Also get UTC start time
             tgt.utc_start_time = self.utc_time_array[tgt.starting_index]
-            print(tgt.starting_index)
 
 
         self.compute_night_fill_fraction(o)

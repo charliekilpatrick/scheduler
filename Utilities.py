@@ -253,29 +253,3 @@ def download_ps1_catalog(target, Mmax=18.0, radius=0.05):
     tbdata = tbdata[mask]
 
     return(tbdata)
-
-def write_phot_file(targets, out_phot_file):
-
-    with open(out_phot_file, 'w') as f:
-
-        for t in targets:
-
-            ra = t.coord.ra.degree
-            dec = t.coord.dec.degree
-
-            for filt in t.exposures.keys():
-
-                zeropoint = self.filters[filt]
-                exptime = t.exposures[filt]
-                m3sigma = self.limiting_magnitude(zeropoint, exptime, 3)
-                priority = t.orig_priority
-
-                phot_line = '{name} {ra} {dec} {filt} {exptime} {m3sigma} {priority} \n'
-                zeropoint = self.filters[filt]
-                exptime = t.exposures[filt]
-                m3sigma = self.limiting_magnitude(zeropoint, exptime, 3)
-
-                phot_line = phot_line.format(name=t.name, ra=ra, dec=dec, 
-                    filt=filt, exptime=exptime, m3sigma=m3sigma)
-
-                phot.write(phot_line)

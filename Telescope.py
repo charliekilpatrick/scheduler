@@ -61,7 +61,7 @@ class Telescope(metaclass=ABCMeta):
 
     def write_phot_file(self, targets, out_phot_file):
 
-        with open(out_phot_file, 'w') as f:
+        with open(out_phot_file, 'w') as phot:
 
             for t in targets:
 

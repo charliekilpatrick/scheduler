@@ -127,15 +127,16 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
 
     # We can get duplicte targets from the queries, weed these by iterating
     # through targets by name and checking the name
-    newtable = data_table[:0].copy()
-    for name in list(set(data_table['name'])):
-        # Find the row with the most recent
-        subtable = data_table[data_table['name']==name]
-        idx = np.argmax([Time(t).mjd for t in subtable['obs_date']])
+    if 'obs_date' in data_table.keys():
+        newtable = data_table[:0].copy()
+        for name in list(set(data_table['name'])):
+            # Find the row with the most recent
+            subtable = data_table[data_table['name']==name]
+            idx = np.argmax([Time(t).mjd for t in subtable['obs_date']])
 
-        newtable.add_row(subtable[idx])
+            newtable.add_row(subtable[idx])
 
-    data_table = copy.copy(newtable)
+        data_table = copy.copy(newtable)
 
     if 'priority' not in data_table.keys():
         # Add the original priority to the table as a new column

@@ -38,6 +38,48 @@ class Telescope(metaclass=ABCMeta):
 
         return exp_time
 
+    def write_fieldcenters(self, targets, fieldcenters_file, ampl='1'):
+
+        with open(fieldcenters_file, 'w') as fc:
+
+            fc.write('# field ampl ra dec epoch raD decD RAoffset DecOffset \n')
+
+            for t in targets:
+
+                name = t.name
+                ra = t.coord.ra.degree
+                dec = t.coord.dec.degree
+
+                hmsdms = t.coord.to_string(sep=':', style='hmsdms', precision=3)
+                ra_hms = hmsdms.split()[0]
+                dec_dms = hmsdms.split()[1]
+
+                fc_line = f'{name:<40} {ampl} {ra_hms} {dec_dms} J2000  '+\
+                          f'{ra:>11}  {dec:>11}    0.0000000    0.0000000 \n'
+
+                fc.write(fc_line)
+
+    def write_phot_file(self, targets, out_phot_file):
+
+        with open(out_phot_file, 'w') as f:
+
+            for t in targets:
+
+                name = t.name
+                ra = t.coord.ra.degree
+                dec = t.coord.dec.degree
+
+                for filt in t.exposures.keys():
+
+                    zeropoint = self.filters[filt]
+                    exptime = t.exposures[filt]
+                    m3sigma = self.limiting_magnitude(zeropoint, exptime, 3)
+                    priority = t.orig_priority
+
+                    phot_line = f'{name} {ra} {dec} {filt} {exptime} {m3sigma} {priority} \n'
+
+                    phot.write(phot_line)
+
     def limiting_magnitude(self, zeropoint, exptime, s_n):
         return(2.5 * np.log10(exptime / (s_n/3.)**2) + zeropoint)
 

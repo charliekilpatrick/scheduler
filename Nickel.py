@@ -2,6 +2,7 @@ import Constants as C
 from Target import TargetType, Target
 import Logs
 import Telescope
+import Utilities
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np, csv, sys
@@ -156,14 +157,12 @@ class Nickel(Telescope.Telescope):
         output_files=None, fieldcenters=None, pointing=None):
 
         if output_files:
-            file_to_write = output_files + '.csv'
-            phot_file_to_write = output_files + '.phot'
-            phot = open(phot_file_to_write, 'w')
+            if '.csv' not in output_files:
+                file_to_write = output_files+'.csv'
+            else:
+                file_to_write = output_files
         else:
             file_to_write = "%s_%s_Schedule.csv" % (self.name, obs_date.strftime('%Y%m%d'))
-        if fieldcenters:
-            fc = open(fieldcenters, 'w')
-            fc.write('# field ampl ra dec epoch raD decD RAoffset DecOffset \n')
 
         # Initialize Google sheets methods for Nickel
         if ('NICKEL_SCHEDULE_SHEET' in os.environ.keys() and 
@@ -243,30 +242,6 @@ class Nickel(Telescope.Telescope):
                     tgt_row.append('\''+C.r_prime)
                     tgt_row.append(10) # Acquisition in r'
 
-                    if output_files:
-                        for filt in t.exposures.keys():
-
-                            phot_line = '{name} {name} {ra} {dec} {filt} '+\
-                                '{exptime} {m3sigma} \n'
-
-                            zeropoint = self.filters[filt]
-                            exptime = t.exposures[filt]
-                            m3sigma = self.limiting_magnitude(zeropoint, exptime, 3)
-
-                            phot_line = phot_line.format(name=t.name, ra=ra,
-                                dec=dec, filt=filt, exptime=exptime,
-                                m3sigma=m3sigma)
-
-                            phot.write(phot_line)
-
-
-                    if fieldcenters:
-                        fc_line = '{name:<40} {ampl} {ra_hms} {dec_dms} J2000  '+\
-                            '{ra:>11}  {dec:>11}    0.0000000    0.0000000 \n'
-                        fc.write(fc_line.format(name=t.name.lower(), ampl=1,
-                            ra_hms=ra, dec_dms=dec, ra=t.coord.ra.degree,
-                            dec=t.coord.dec.degree))
-
                     output_rows.append(tgt_row)
 
                     if C.B_band in t.exposures.keys():
@@ -286,30 +261,6 @@ class Nickel(Telescope.Telescope):
                     tgt_row.append('')
                     tgt_row.append('\''+C.r_prime)
                     tgt_row.append(t.exposures[C.r_prime]) # Acquisition in r'
-
-                    if output_files:
-                        for filt in t.exposures.keys():
-
-                            phot_line = '{name} {name} {ra} {dec} {filt} '+\
-                                '{exptime} {m3sigma} \n'
-
-                            zeropoint = self.filters[filt]
-                            exptime = t.exposures[filt]
-                            m3sigma = self.limiting_magnitude(zeropoint, exptime, 3)
-
-                            phot_line = phot_line.format(name=t.name, ra=ra,
-                                dec=dec, filt=filt, exptime=exptime,
-                                m3sigma=m3sigma)
-
-                            phot.write(phot_line)
-
-
-                    if fieldcenters:
-                        fc_line = '{name:<40} {ampl} {ra_hms} {dec_dms} J2000  '+\
-                            '{ra:>11}  {dec:>11}    0.0000000    0.0000000 \n'
-                        fc.write(fc_line.format(name=t.name.lower(), ampl=1,
-                            ra_hms=ra, dec_dms=dec, ra=t.coord.ra.degree,
-                            dec=t.coord.dec.degree))
 
                     output_rows.append(tgt_row)
 
@@ -345,10 +296,10 @@ class Nickel(Telescope.Telescope):
                     start_number=str(night * 1000 + 1))
 
         if fieldcenters:
-            fc.close()
+            self.write_fieldcenters_file(targets, fieldcenters)
 
         if output_files:
-            phot.close()
+            self.write_phot_file(targets, output_files+'.phot')
 
 
     def post_schedule(self, observatory_name, obs_date, targets):

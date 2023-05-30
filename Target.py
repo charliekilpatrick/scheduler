@@ -12,10 +12,14 @@ class TargetType(Enum):
 class Target:
     def __init__(self, name, coord, priority, target_type, observatory_lat,
                  sidereal_radian_array, ref_date=None, apparent_mag=None,
-                 obs_date=None,fixed_exp={}, halimit=None):
+                 obs_date=None,fixed_exp={}, halimit=None,
+                 orig_priority=None):
         # Provided by Constructor
         self.name = name
         self.coord = coord
+        # If the target has a re-calculated priority, store the original value
+        # as a separate quantity
+        self.orig_priority = None
         self.priority = priority
         self.type = target_type
         # This is a reference date when the apparent magnitude applies

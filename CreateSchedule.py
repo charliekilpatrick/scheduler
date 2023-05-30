@@ -78,6 +78,11 @@ def main():
             else:
                 raise ValueError('Unrecognized target type!')
 
+            if 'orig_priority' in target.colnames:
+                orig_priority=target['orig_priority']
+            else:
+                orig_priority=None
+
             targets.append(
                 Target(
                     name=target['name'],
@@ -86,9 +91,10 @@ def main():
                     target_type=target_type,
                     observatory_lat=obs.ephemeris.lat,
                     sidereal_radian_array=obs.sidereal_radian_array,
-                    ref_date=None,#target['date'],
+                    ref_date=None,
                     apparent_mag=target['mag'],
-                    halimit=args.halimit
+                    halimit=args.halimit,
+                    orig_priority=orig_priority
                 )
             )
 

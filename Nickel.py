@@ -182,8 +182,6 @@ class Nickel(Telescope.Telescope):
             success = Logs.copy_log(sheet, params['TEMPLATE'], 'Nickel Log',
                 params['CURRENT_SHEET'], obs_date.strftime('%Y%m%d'))
 
-            if not success:
-                return(1)
         else:
             observer = None
             params = None

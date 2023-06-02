@@ -324,7 +324,7 @@ class Thacher(Telescope.Telescope):
             for filt in tgt.exposures.keys():
 
                 number = str(i).zfill(7)
-                exptime = str(t.exposures[filt])  
+                exptime = str(tgt.exposures[filt])  
                 filt = str(filt)
 
                 obs = self.make_observation_dict(o, priority = 100,
@@ -333,7 +333,7 @@ class Thacher(Telescope.Telescope):
                 xml_header['RTML']['Request'+number] = obs['Request']
 
                 target = self.make_target_dict(tgt.name.lower(), str(ra), 
-                    str(dec), filt, str(t.exposures[filt]))
+                    str(dec), filt, str(tgt.exposures[filt]))
 
                 xml_header['RTML']['Request'+number]['Target']=target['Target']
 
@@ -354,8 +354,6 @@ class Thacher(Telescope.Telescope):
         dicttoxml(f, xml_header, depth = 0, name_name = 'name', order = order)
 
         f.close()
-
-
 
     def write_schedule(self, observatory_name, obs_date, targets, output_files=None,
         fieldcenters=None, pointing=None):

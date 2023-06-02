@@ -50,7 +50,7 @@ class Telescope(metaclass=ABCMeta):
                 pointing_row.append('pointing'+str(k+1))
                 pointing_row.append('\''+point['ra'])
                 pointing_row.append('\''+point['dec'])
-                pointing_row.append('')
+                pointing_row.append('\''+('%.1f'%point['mag']))
                 pointing_row.append('r\'')
                 pointing_row.append('1')
                 output_rows.append(pointing_row)
@@ -84,25 +84,35 @@ class Telescope(metaclass=ABCMeta):
             ra = hmsdms.split()[0]
             dec = hmsdms.split()[1]
 
+            mag=''
+            if t.apparent_mag:
+                mag = '%.1f'%t.apparent_mag
+
             if t.type is not TargetType.GW and do_acquisition:
                 tgt_row = []
                 tgt_row.append('\''+t.name.lower())
                 tgt_row.append('\''+ra)
                 tgt_row.append('\''+dec)
-                tgt_row.append('')
+                tgt_row.append('\''+mag)
                 tgt_row.append('\''+C.r_prime)
                 tgt_row.append(10) # Acquisition in r'
 
                 output_rows.append(tgt_row)
+            else:
+                tgt_row = []
+                tgt_row.append('\''+t.name.lower())
+                tgt_row.append('\''+ra)
+                tgt_row.append('\''+dec)
+                tgt_row.append('\''+mag)
 
-            if C.B_band in t.exposures.keys():
-                output_rows.append(self.filter_row(C.B_band, t.exposures[C.B_band]))
-            if C.V_band in t.exposures.keys():
-                output_rows.append(self.filter_row(C.V_band, t.exposures[C.V_band]))
             if C.r_prime in t.exposures.keys():
                 output_rows.append(self.filter_row(C.r_prime, t.exposures[C.r_prime]))
             if C.i_prime in t.exposures.keys():
                 output_rows.append(self.filter_row(C.i_prime, t.exposures[C.i_prime]))
+            if C.B_band in t.exposures.keys():
+                output_rows.append(self.filter_row(C.B_band, t.exposures[C.B_band]))
+            if C.V_band in t.exposures.keys():
+                output_rows.append(self.filter_row(C.V_band, t.exposures[C.V_band]))
 
         return(output_rows)
 

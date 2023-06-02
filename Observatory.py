@@ -105,26 +105,35 @@ class Observatory():
         c = SkyCoord(str(lst), self.ephemeris.lat, unit=vunits)
 
         # Get FK5 catalog and find closest object to zenith at start of night
-        table = Vizier.query_region(c, radius = 10 * u.deg, catalog='IV/22')[0]
+        table = Vizier.query_region(c, radius = 15 * u.deg, catalog='IV/22')[0]
         separation = Column([c.separation(SkyCoord(r['RAJ2000'],
             r['DEJ2000'], unit=vunits)).degree for r in table],
             name='separation')
+
+        mask = table['Vmag']>4.0
+        table = table[mask]
 
         table.add_column(separation)
         table.sort('separation')
 
         if len(table)>5:
+            table = table[0:5]
             pointing = [SkyCoord(r['RAJ2000'], r['DEJ2000'], unit=vunits)
                 for r in table[0:5]]
         else:
             pointing = [SkyCoord(r['RAJ2000'], r['DEJ2000'], unit=vunits)
                 for r in table]
 
-        self.pointing = [
-                {'ra': p.to_string(sep=':', style='hmsdms',
-                    precision=3).split()[0],
-                'dec': p.to_string(sep=':', style='hmsdms',
-                    precision=3).split()[1]} for p in pointing]
+        for row in table:
+            coord = SkyCoord(row['RAJ2000'],row['DEJ2000'], unit=vunits)
+            self.pointing.append(
+                    {'name': 'HD'+str(row['HD']),
+                    'ra': coord.to_string(sep=':', style='hmsdms',
+                        precision=3).split()[0],
+                    'dec': coord.to_string(sep=':', style='hmsdms',
+                        precision=3).split()[1],
+                    'mag': row['Vmag']}
+                    )
 
 
         for utc_time in self.utc_time_array:
@@ -285,6 +294,10 @@ class Observatory():
             telescope.compute_exposures()
             telescope.compute_net_priorities()
             targets = telescope.get_targets()
+
+        else:
+
+            obs_date = self.obs_date
 
         def packable(goodtime, tgt):
             """Find nearby time intervals that amount to the observing time of a tile"""
@@ -451,5 +464,7 @@ class Observatory():
 
         print(f'\n\nWriting out schedule: {d0} to {d1}\n\n')
 
-        telescope.write_schedule(self.name, date0, o, output_files=output_files,
+        date = Time(obs_date)
+
+        telescope.write_schedule(self.name, date, o, output_files=output_files,
             fieldcenters=fieldcenters, pointing=self.pointing)

@@ -144,10 +144,12 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
 
         data_table = copy.copy(newtable)
 
-    if 'priority' not in data_table.keys():
+    if 'priority' in data_table.keys():
         # Add the original priority to the table as a new column
         data_table.add_column(Column(data_table['priority'], 
             name='orig_priority'))
+
+    if 'priority' not in data_table.keys():
         # Add targets one by one from
         priority = []
         now = Time(datetime.now())

@@ -153,175 +153,69 @@ class Nickel(Telescope.Telescope):
 
         return filter_row
 
-    def write_schedule(self, observatory_name, obs_date, targets,
-        output_files=None, fieldcenters=None, pointing=None):
-
-        if output_files:
-            if '.csv' not in output_files:
-                file_to_write = output_files+'.csv'
-            else:
-                file_to_write = output_files
-        else:
-            file_to_write = "%s_%s_Schedule.csv" % (self.name, obs_date.strftime('%Y%m%d'))
+    def initiate_nickel_sheet(self, obs_date, is_gw=False):
 
         # Initialize Google sheets methods for Nickel
         if ('NICKEL_SCHEDULE_SHEET' in os.environ.keys() and 
             'GSHEETS_TOKEN' in os.environ.keys() and
             'NICKEL_TEMPLATE_SHEET' in os.environ.keys() and
             'NICKEL_OBSERVERS_SHEET' in os.environ.keys()):
+
             params = Logs.gsheets_params(os.environ['NICKEL_SCHEDULE_SHEET'], 
                 os.environ['NICKEL_TEMPLATE_SHEET'], 
                 os.environ['GSHEETS_TOKEN'],
                 observers_sheet=os.environ['NICKEL_OBSERVERS_SHEET'])
 
             sheet = Logs.initiate_gsheet(params['gsheets_token'])
-            (observer, night) = Logs.check_if_tel_on_date(sheet, 
-                params['OBSERVERS_SHEET'], parse(obs_date.strftime('%Y%m%d')))
+            if not is_gw:
+                (observer, night) = Logs.check_if_tel_on_date(sheet, 
+                    params['OBSERVERS_SHEET'], parse(obs_date.strftime('%Y%m%d')))
+                tab_name = obs_date.strftime('%Y%m%d')
+                if night==0: night = 1
+            else:
+                observer = ''
+                night = 1
+                tab_name = obs_date.strftime('%Y%m%d')+'gw'
 
             # Make an empty Nickel log
             success = Logs.copy_log(sheet, params['TEMPLATE'], 'Nickel Log',
-                params['CURRENT_SHEET'], obs_date.strftime('%Y%m%d'))
+                params['CURRENT_SHEET'], tab_name)
 
         else:
             observer = None
             params = None
+            tab_name = None
+            night = None
+            sheet = None
 
-        with open(file_to_write,'w') as csvoutput:
-            writer = csv.writer(csvoutput, lineterminator="\n")
+        return(observer, params, tab_name, night, sheet)
 
-            output_rows = []
+    def write_schedule(self, observatory_name, obs_date, targets,
+        output_files=None, fieldcenters=None, pointing=None):
 
-            # Append lines for pointing and focusing
-            if pointing:
-                for k,point in enumerate(pointing):
-                    pointing_row = []
-                    pointing_row.append('pointing'+str(k+1))
-                    pointing_row.append('\''+point['ra'])
-                    pointing_row.append('\''+point['dec'])
-                    pointing_row.append('')
-                    pointing_row.append('r\'')
-                    pointing_row.append('1')
-                    output_rows.append(pointing_row)
+        is_gw = all([t.type is TargetType.GW for t in targets])
 
-            focus_row = []
-            focus_row.append('focus')
-            focus_row.append('')
-            focus_row.append('')
-            focus_row.append('')
-            focus_row.append('r\'')
-            focus_row.append('')
-            output_rows.append(focus_row)
+        if not output_files:
+            output_files = "%s_%s_Schedule" % (self.name, obs_date.strftime('%Y%m%d'))
 
-            header_row = []
-            header_row.append("Object Name")
-            header_row.append("Right Ascension")
-            header_row.append("Declination")
-            header_row.append("Estimated Magnitude")
-            header_row.append("Filter")
-            header_row.append("Exposure Time")
-            output_rows.append(header_row)
+        observer, params, tab_name, night, sheet = self.initiate_nickel_sheet(obs_date, is_gw=is_gw)
+        output_rows = self.serialize_output_rows(targets, pointing=pointing,
+            focus=True, do_acquisition=True)
 
-            for t in targets:
+        # Need to append a dummy to the start of each row to account for PIC
+        for i,row in enumerate(output_rows):
+            output_rows[i] = [''] + row
 
-                # Ignore if we did not calculate any exposures for this target
-                if len(t.exposures)==0:
-                    continue
-
-                hmsdms = t.coord.to_string(sep=':', style='hmsdms', precision=3)
-                ra = hmsdms.split()[0]
-                dec = hmsdms.split()[1]
-
-                if t.type is not TargetType.GW:
-                    tgt_row = []
-                    tgt_row.append('\''+t.name.lower())
-                    tgt_row.append('\''+ra)
-                    tgt_row.append('\''+dec)
-                    tgt_row.append('')
-                    tgt_row.append('\''+C.r_prime)
-                    tgt_row.append(10) # Acquisition in r'
-
-                    output_rows.append(tgt_row)
-
-                    if C.B_band in t.exposures.keys():
-                        output_rows.append(self.filter_row(C.B_band, t.exposures[C.B_band]))
-                    if C.V_band in t.exposures.keys():
-                        output_rows.append(self.filter_row(C.V_band, t.exposures[C.V_band]))
-                    if C.r_prime in t.exposures.keys():
-                        output_rows.append(self.filter_row(C.r_prime, t.exposures[C.r_prime]))
-                    if C.i_prime in t.exposures.keys():
-                        output_rows.append(self.filter_row(C.i_prime, t.exposures[C.i_prime]))
-
-                else:
-                    tgt_row = []
-                    tgt_row.append('\''+t.name.lower())
-                    tgt_row.append('\''+ra)
-                    tgt_row.append('\''+dec)
-                    tgt_row.append('')
-                    tgt_row.append('\''+C.r_prime)
-                    tgt_row.append(t.exposures[C.r_prime]) # Acquisition in r'
-
-                    output_rows.append(tgt_row)
-
-            writer.writerows(output_rows)
-
-            # Need to append a dummy to the start of each row to account for PIC
-            for i,row in enumerate(output_rows):
-                output_rows[i] = [''] + row
-
-            if params is not None:
-                print('Adding schedule to Google sheet under:',obs_date.strftime('%Y%m%d'))
-                print('Observer for tonight is:',observer)
-                Logs.populate_nickel_log(sheet, params['CURRENT_SHEET'],
-                    obs_date.strftime('%Y%m%d'), output_rows,
-                    date=obs_date.strftime('%Y/%m/%d'), observer=observer,
-                    start_number=str(night * 1000 + 1))
+        if params is not None:
+            print('Adding schedule to Google sheet under:',obs_date.strftime('%Y%m%d'))
+            print('Observer for tonight is:',observer)
+            Logs.populate_nickel_log(sheet, params['CURRENT_SHEET'], tab_name, 
+                output_rows, date=obs_date.strftime('%Y/%m/%d'), 
+                observer=observer, start_number=str(night * 1000 + 1))
 
         if fieldcenters:
             self.write_fieldcenters_file(targets, fieldcenters)
 
-        if output_files:
-            self.write_phot_file(targets, output_files+'.phot')
+        self.write_csv_output(output_rows, output_files+'.csv')
+        self.write_phot_file(targets, output_files+'.phot')
 
-
-    def post_schedule(self, observatory_name, obs_date, targets):
-        writer = csv.writer(csvoutput, lineterminator="\n")
-
-        output_rows = []
-        header_row = []
-        header_row.append("Object Name")
-        header_row.append("Right Ascension")
-        header_row.append("Declination")
-        header_row.append("Estimated Magnitude")
-        header_row.append("Filter")
-        header_row.append("Exposure Time")
-        output_rows.append(header_row)
-
-        for t in targets:
-
-            # Ignore if we did not calculate any exposures for this target
-            if len(t.exposures)==0:
-                continue
-
-            ra = t.coord.to_string(style='hmsdms', sep=':').split()[0]
-            dec = t.coord.to_string(style='hmsdms', sep=':').split()[1]
-
-            tgt_row = []
-            tgt_row.append(t.name.lower())
-            tgt_row.append(ra)
-            tgt_row.append(dec)
-            tgt_row.append(None)
-            tgt_row.append(C.r_prime)
-            tgt_row.append(10) # Acquisition in r'
-
-            output_rows.append(tgt_row)
-
-            if C.B_band in t.exposures.keys():
-                output_rows.append(self.filter_row(C.B_band, t.exposures[C.B_band]))
-            if C.V_band in t.exposures.keys():
-                output_rows.append(self.filter_row(C.V_band, t.exposures[C.V_band]))
-            if C.r_prime in t.exposures.keys():
-                output_rows.append(self.filter_row(C.r_prime, t.exposures[C.r_prime]))
-            if C.i_prime in t.exposures.keys():
-                output_rows.append(self.filter_row(C.i_prime, t.exposures[C.i_prime]))
-
-        writer.writerows(output_rows)

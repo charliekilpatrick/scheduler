@@ -104,6 +104,10 @@ class Telescope(metaclass=ABCMeta):
                 tgt_row.append('\''+ra)
                 tgt_row.append('\''+dec)
                 tgt_row.append('\''+mag)
+                tgt_row.append('\'')
+                tgt_row.append('\'')
+
+                output_rows.append(tgt_row)
 
             if C.r_prime in t.exposures.keys():
                 output_rows.append(self.filter_row(C.r_prime, t.exposures[C.r_prime]))

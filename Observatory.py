@@ -106,12 +106,12 @@ class Observatory():
 
         # Get FK5 catalog and find closest object to zenith at start of night
         table = Vizier.query_region(c, radius = 15 * u.deg, catalog='IV/22')[0]
+        mask = table['Vmag']>4.0
+        table = table[mask]
+
         separation = Column([c.separation(SkyCoord(r['RAJ2000'],
             r['DEJ2000'], unit=vunits)).degree for r in table],
             name='separation')
-
-        mask = table['Vmag']>4.0
-        table = table[mask]
 
         table.add_column(separation)
         table.sort('separation')

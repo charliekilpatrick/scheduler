@@ -104,6 +104,8 @@ class Telescope(metaclass=ABCMeta):
             if C.i_prime in t.exposures.keys():
                 output_rows.append(self.filter_row(C.i_prime, t.exposures[C.i_prime]))
 
+        return(output_rows)
+
     def write_csv_output(self, output_rows, file_to_write):
 
         with open(file_to_write,"w") as csvoutput:

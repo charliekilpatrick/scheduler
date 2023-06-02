@@ -5,7 +5,13 @@ from astropy.coordinates import SkyCoord
 from astropy.io import ascii
 from astropy.time import Time
 from astropy.table import unique, Column
-import csv, requests, sys, numpy as np, copy
+
+import csv
+import requests
+import sys
+import numpy as np
+import copy
+import itertools
 
 from astroquery.vizier import Vizier
 from astroquery.mast import Catalogs
@@ -254,3 +260,52 @@ def download_ps1_catalog(target, Mmax=18.0, radius=0.05):
     tbdata = tbdata[mask]
 
     return(tbdata)
+
+def dicttoxml(file, dictionary, depth = 0, name_name = 'name',order = []):
+
+        if not order:
+            it = dictionary
+        else:
+            requests=[]
+            for item in dictionary.keys():
+                if 'Request' in item:
+                    requests.append(item)
+            it = [requests if x=='Request' else [x] for x in order]
+            it = list(itertools.chain.from_iterable(it))
+        for item in it:
+            if item not in dictionary.keys():
+                continue
+            # Special case with xml header
+            if (item=='xml'):
+                ver = dictionary[item]['version']
+                enc = dictionary[item]['encoding']
+                append = ' version=\"{0}\" endocing=\"{1}\"'.format(ver, enc)
+                file.write('<?{0}{1}?>'.format(item,append)+'\n')
+            else:
+                # Special case with one line xml
+                try:
+                    val = dictionary[item][name_name]
+                    file.write('\t'*depth+'<{0}>{1}</{0}>'.format(item,val)+'\n')
+                except:
+                    # Fix unique 'Request' key issue
+                    # i.e., can't have more than one key
+                    # in dict called 'Request'
+                    item_name = item
+                    if ('Request' in item_name):
+                        item_name = 'Request'
+                    append = ''
+                    if isinstance(dictionary[item],dict):
+                        for item2 in dictionary[item]:
+                            if not isinstance(dictionary[item][item2], dict):
+                                if isinstance(dictionary[item][item2], str):
+                                    append += ' ' + item2 + '=\"' +\
+                                        dictionary[item][item2]+'\"'
+                                else:
+                                    append += ' ' + item2 + '=' +\
+                                        dictionary[item][item2]
+                        line = '\t' * depth + '<{0}{1}>'
+                        file.write(line.format(item_name, append) + '\n')
+                        dicttoxml(file, dictionary[item], depth = depth+1,
+                            name_name=name_name, order=order)
+                        line = '\t' * depth + '</{0}>'
+                        file.write(line.format(item_name, append) + '\n')

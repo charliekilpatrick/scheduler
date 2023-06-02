@@ -1,12 +1,11 @@
 import Constants as C
 from Target import TargetType, Target
 import Logs
-
-from abc import ABCMeta, abstractmethod, abstractproperty
-import numpy as np, csv, sys
-from astropy.time import Time
-
 import Telescope
+import Utilities
+
+import numpy as np
+import itertools
 
 class Thacher(Telescope.Telescope):
 
@@ -242,7 +241,7 @@ class Thacher(Telescope.Telescope):
 
         return(default)
 
-    def make_header_dict(contact = 'Charlie Kilpatrick',
+    def make_header_dict(self, contact = 'Charlie Kilpatrick',
         email = 'ckilpatrick@northwestern.edu', xml_version = '1.0',
         encoding = 'ISO-8859-1', RTML_version = '2.3'):
         default = {
@@ -261,55 +260,6 @@ class Thacher(Telescope.Telescope):
 
         return(default)
 
-    def dicttoxml(self, file, dictionary, depth = 0, name_name = 'name', order = []):
-
-        if not order:
-            it = dictionary
-        else:
-            requests=[]
-            for item in dictionary.keys():
-                if 'Request' in item:
-                    requests.append(item)
-            it = [requests if x=='Request' else [x] for x in order]
-            it = list(itertools.chain.from_iterable(it))
-        for item in it:
-            if item not in dictionary.keys():
-                continue
-            # Special case with xml header
-            if (item=='xml'):
-                ver = dictionary[item]['version']
-                enc = dictionary[item]['encoding']
-                append = ' version=\"{0}\" endocing=\"{1}\"'.format(ver, enc)
-                file.write('<?{0}{1}?>'.format(item,append)+'\n')
-            else:
-                # Special case with one line xml
-                try:
-                    val = dictionary[item][name_name]
-                    file.write('\t'*depth+'<{0}>{1}</{0}>'.format(item,val)+'\n')
-                except:
-                    # Fix unique 'Request' key issue
-                    # i.e., can't have more than one key
-                    # in dict called 'Request'
-                    item_name = item
-                    if ('Request' in item_name):
-                        item_name = 'Request'
-                    append = ''
-                    if isinstance(dictionary[item],dict):
-                        for item2 in dictionary[item]:
-                            if not isinstance(dictionary[item][item2], dict):
-                                if isinstance(dictionary[item][item2], str):
-                                    append += ' ' + item2 + '=\"' +\
-                                        dictionary[item][item2]+'\"'
-                                else:
-                                    append += ' ' + item2 + '=' +\
-                                        dictionary[item][item2]
-                        line = '\t' * depth + '<{0}{1}>'
-                        file.write(line.format(item_name, append) + '\n')
-                        dicttoxml(file, dictionary[item], depth = depth+1,
-                            name_name=name_name, order=order)
-                        line = '\t' * depth + '</{0}>'
-                        file.write(line.format(item_name, append) + '\n')
-
     def serialize_xml(self, targets, outfile):
 
         xml_header = self.make_header_dict()
@@ -319,21 +269,22 @@ class Thacher(Telescope.Telescope):
 
         # Make an observation Request object
         for tgt in targets:
-            ra = tgt.coord.ra.degree
-            dec = tgt.coord.dec.degree
+            name = tgt.name
+            coord = tgt.coord
+
             for filt in tgt.exposures.keys():
 
                 number = str(i).zfill(7)
                 exptime = str(tgt.exposures[filt])  
                 filt = str(filt)
 
-                obs = self.make_observation_dict(o, priority = 100,
-                    project_name='Thacher Gravitational Wave templates')
+                obs = self.make_observation_dict(name, priority = 100,
+                    project_name='Thacher Gravitational Wave Observing')
 
                 xml_header['RTML']['Request'+number] = obs['Request']
 
-                target = self.make_target_dict(tgt.name.lower(), str(ra), 
-                    str(dec), filt, str(tgt.exposures[filt]))
+                target = self.make_target_dict(tgt.name.lower(), coord, filt, 
+                    str(tgt.exposures[filt]))
 
                 xml_header['RTML']['Request'+number]['Target']=target['Target']
 
@@ -351,7 +302,8 @@ class Thacher(Telescope.Telescope):
                      'Target', 'count', 'interval', 'autofocus',
                      'Coordinates', 'RightAscension', 'Declination',
                      'Picture', 'ExposureTime', 'Binning', 'Filter']
-        dicttoxml(f, xml_header, depth = 0, name_name = 'name', order = order)
+        Utilities.dicttoxml(f, xml_header, depth = 0, name_name='name', 
+            order=order)
 
         f.close()
 

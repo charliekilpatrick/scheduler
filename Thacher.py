@@ -361,14 +361,12 @@ class Thacher(Telescope.Telescope):
         fieldcenters=None, pointing=None):
 
         if output_files:
-            file_to_write = output_files + '.csv'
-            phot_file_to_write = output_files + '.phot'
-            phot = open(phot_file_to_write, 'w')
+            if '.csv' not in output_files:
+                file_to_write = output_files+'.csv'
+            else:
+                file_to_write = output_files
         else:
             file_to_write = "%s_%s_Schedule.csv" % (self.name, obs_date.strftime('%Y%m%d'))
-        if fieldcenters:
-            fc = open(fieldcenters, 'w')
-            fc.write('# field ampl ra dec epoch raD decD RAoffset DecOffset \n')
 
         with open(file_to_write,"w") as csvoutput:
             writer = csv.writer(csvoutput, lineterminator="\n")
@@ -451,8 +449,11 @@ class Thacher(Telescope.Telescope):
 
             writer.writerows(output_rows)
 
-        if output_files:
-            phot.close()
-
         if fieldcenters:
-            fc.close()
+            self.write_fieldcenters_file(targets, fieldcenters)
+
+        if output_files:
+            self.write_phot_file(targets, output_files+'.phot')
+
+        if output_files:
+            self.serialize_xml(targets, output_files+'.xml')

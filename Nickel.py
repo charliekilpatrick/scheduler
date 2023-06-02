@@ -264,23 +264,6 @@ class Nickel(Telescope.Telescope):
 
             writer.writerows(output_rows)
 
-            # Output log in Nickel log format to output dir
-            if params is not None:
-                target_list = 'nickel_targets_{0}'.format(obs_date.strftime('%Y%m%d'))
-                target_list = params['target_dir'] + target_list
-                with open(target_list, 'w') as f:
-                    for row in output_rows:
-                        if row[0] and 'object' in row[0].lower():
-                            continue
-                        if row[0] and row[1] and row[2]:
-                            target_list_name=str(row[0]).replace('\'','')
-                            l='{0} {1} {2} {3} \n'.format(target_list_name,
-                                row[1].replace('\'',''),
-                                row[2].replace('\'',''),'2000')
-                            f.write(l)
-
-
-
             # Need to append a dummy to the start of each row to account for PIC
             for i,row in enumerate(output_rows):
                 output_rows[i] = [''] + row

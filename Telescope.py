@@ -38,6 +38,72 @@ class Telescope(metaclass=ABCMeta):
 
         return exp_time
 
+    def serialize_output_rows(self, targets, pointing=None, focus=False,
+        do_acquisition=False):
+
+        output_rows = []
+
+        # Append lines for pointing and focusing
+        if pointing:
+            for k,point in enumerate(pointing):
+                pointing_row = []
+                pointing_row.append('pointing'+str(k+1))
+                pointing_row.append('\''+point['ra'])
+                pointing_row.append('\''+point['dec'])
+                pointing_row.append('')
+                pointing_row.append('r\'')
+                pointing_row.append('1')
+                output_rows.append(pointing_row)
+
+        if focus:
+            focus_row = []
+            focus_row.append('focus')
+            focus_row.append('')
+            focus_row.append('')
+            focus_row.append('')
+            focus_row.append('r\'')
+            focus_row.append('')
+            output_rows.append(focus_row)
+
+        header_row = []
+        header_row.append("Object Name")
+        header_row.append("Right Ascension")
+        header_row.append("Declination")
+        header_row.append("Estimated Magnitude")
+        header_row.append("Filter")
+        header_row.append("Exposure Time")
+        output_rows.append(header_row)
+
+        for t in targets:
+
+            # Ignore if we did not calculate any exposures for this target
+            if len(t.exposures)==0:
+                continue
+
+            hmsdms = t.coord.to_string(sep=':', style='hmsdms', precision=3)
+            ra = hmsdms.split()[0]
+            dec = hmsdms.split()[1]
+
+            if t.type is not TargetType.GW and do_acquisition:
+                tgt_row = []
+                tgt_row.append('\''+t.name.lower())
+                tgt_row.append('\''+ra)
+                tgt_row.append('\''+dec)
+                tgt_row.append('')
+                tgt_row.append('\''+C.r_prime)
+                tgt_row.append(10) # Acquisition in r'
+
+                output_rows.append(tgt_row)
+
+            if C.B_band in t.exposures.keys():
+                output_rows.append(self.filter_row(C.B_band, t.exposures[C.B_band]))
+            if C.V_band in t.exposures.keys():
+                output_rows.append(self.filter_row(C.V_band, t.exposures[C.V_band]))
+            if C.r_prime in t.exposures.keys():
+                output_rows.append(self.filter_row(C.r_prime, t.exposures[C.r_prime]))
+            if C.i_prime in t.exposures.keys():
+                output_rows.append(self.filter_row(C.i_prime, t.exposures[C.i_prime]))
+
     def write_fieldcenters(self, targets, fieldcenters_file, ampl='1'):
 
         with open(fieldcenters_file, 'w') as fc:

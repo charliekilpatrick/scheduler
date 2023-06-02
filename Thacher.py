@@ -276,7 +276,7 @@ class Thacher(Telescope.Telescope):
             if item not in dictionary.keys():
                 continue
             # Special case with xml header
-            if (item is 'xml'):
+            if (item=='xml'):
                 ver = dictionary[item]['version']
                 enc = dictionary[item]['encoding']
                 append = ' version=\"{0}\" endocing=\"{1}\"'.format(ver, enc)
@@ -360,100 +360,14 @@ class Thacher(Telescope.Telescope):
     def write_schedule(self, observatory_name, obs_date, targets, output_files=None,
         fieldcenters=None, pointing=None):
 
-        if output_files:
-            if '.csv' not in output_files:
-                file_to_write = output_files+'.csv'
-            else:
-                file_to_write = output_files
-        else:
-            file_to_write = "%s_%s_Schedule.csv" % (self.name, obs_date.strftime('%Y%m%d'))
+        if not output_files:
+            output_files = "%s_%s_Schedule" % (self.name, obs_date.strftime('%Y%m%d'))
 
-        with open(file_to_write,"w") as csvoutput:
-            writer = csv.writer(csvoutput, lineterminator="\n")
-
-            output_rows = []
-            header_row = []
-            header_row.append("Object Name")
-            header_row.append("Right Ascension")
-            header_row.append("Declination")
-            header_row.append("Estimated Magnitude")
-            header_row.append("Filter")
-            header_row.append("Exposure Time")
-            output_rows.append(header_row)
-
-            last_filter = C.r_prime
-            for t in targets:
-
-                hmsdms = t.coord.to_string(sep=':', style='hmsdms', precision=3)
-                ra = hmsdms.split()[0]
-                dec = hmsdms.split()[1]
-
-                if output_files:
-                    for filt in t.exposures.keys():
-
-                        phot_line = '{name} {name} {ra} {dec} {filt} '+\
-                            '{exptime} {m3sigma} \n'
-
-                        zeropoint = self.filters[filt]
-                        exptime = t.exposures[filt]
-                        m3sigma = self.limiting_magnitude(zeropoint, exptime, 3)
-
-                        phot_line = phot_line.format(name=t.name, ra=ra,
-                            dec=dec, filt=filt, exptime=exptime,
-                            m3sigma=m3sigma)
-
-                        phot.write(phot_line)
-
-                if fieldcenters:
-                    fc_line = '{name:<40} {ampl} {ra_hms} {dec_dms} J2000  '+\
-                        '{ra:>11}  {dec:>11}    0.0000000    0.0000000 \n'
-                    fc.write(fc_line.format(name=t.name.lower(), ampl=1,
-                        ra_hms=ra, dec_dms=dec, ra=t.coord.ra.degree,
-                        dec=t.coord.dec.degree))
-
-                tgt_row = []
-                tgt_row.append(t.name.lower())
-                tgt_row.append(ra)
-                tgt_row.append(dec)
-                tgt_row.append(None)
-
-                # Last criterion: if previous obj had full 4 filters, but this target only has 2
-                if (last_filter == C.r_prime) or \
-                   (last_filter == C.i_prime) or \
-                    (last_filter == C.B_band and len(t.exposures) < 4):
-
-                    # tgt_row.append(C.r_prime)
-                    # tgt_row.append(10) # Acquisition in r'
-                    output_rows.append(tgt_row)
-
-                    # Start in r'i'VB order
-                    output_rows.append(self.filter_row(C.r_prime, t.exposures[C.r_prime]))
-                    last_filter = C.i_prime
-
-                    if len(t.exposures) > 2:
-                        output_rows.append(self.filter_row(C.V_band, t.exposures[C.V_band]))
-                        output_rows.append(self.filter_row(C.B_band, t.exposures[C.B_band]))
-                        last_filter = C.B_band
-
-                # Flip order: BVi'r'
-                else:
-                    tgt_row.append(C.B_band)
-                    tgt_row.append(20) # Acquisition in B
-                    output_rows.append(tgt_row)
-
-                    output_rows.append(self.filter_row(C.B_band, t.exposures[C.B_band]))
-                    output_rows.append(self.filter_row(C.V_band, t.exposures[C.V_band]))
-                    output_rows.append(self.filter_row(C.i_prime, t.exposures[C.i_prime]))
-                    output_rows.append(self.filter_row(C.r_prime, t.exposures[C.r_prime]))
-                    last_filter = C.r_prime
-
-            writer.writerows(output_rows)
+        output_rows = self.serialize_output_rows(targets, pointing=pointing)
 
         if fieldcenters:
             self.write_fieldcenters_file(targets, fieldcenters)
 
-        if output_files:
-            self.write_phot_file(targets, output_files+'.phot')
-
-        if output_files:
-            self.serialize_xml(targets, output_files+'.xml')
+        self.write_csv_output(output_rows, output_files+'.csv')
+        self.write_phot_file(targets, output_files+'.phot')
+        self.serialize_xml(targets, output_files+'.xml')

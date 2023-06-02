@@ -104,6 +104,12 @@ class Telescope(metaclass=ABCMeta):
             if C.i_prime in t.exposures.keys():
                 output_rows.append(self.filter_row(C.i_prime, t.exposures[C.i_prime]))
 
+    def write_csv_output(self, output_rows, file_to_write):
+
+        with open(file_to_write,"w") as csvoutput:
+            writer = csv.writer(csvoutput, lineterminator="\n")
+            writer.writerows(output_rows)
+
     def write_fieldcenters(self, targets, fieldcenters_file, ampl='1'):
 
         with open(fieldcenters_file, 'w') as fc:

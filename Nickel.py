@@ -182,13 +182,14 @@ class Nickel(Telescope.Telescope):
                 params['CURRENT_SHEET'], tab_name)
 
         else:
+            success = False
             observer = None
             params = None
             tab_name = None
             night = None
             sheet = None
 
-        return(observer, params, tab_name, night, sheet)
+        return(success, observer, params, tab_name, night, sheet)
 
     def write_schedule(self, observatory_name, obs_date, targets,
         output_files=None, fieldcenters=None, pointing=None):
@@ -198,7 +199,7 @@ class Nickel(Telescope.Telescope):
         if not output_files:
             output_files = "%s_%s_Schedule" % (self.name, obs_date.strftime('%Y%m%d'))
 
-        observer, params, tab_name, night, sheet = self.initiate_nickel_sheet(obs_date, is_gw=is_gw)
+        log_success, observer, params, tab_name, night, sheet = self.initiate_nickel_sheet(obs_date, is_gw=is_gw)
         output_rows = self.serialize_output_rows(targets, pointing=pointing,
             focus=True, do_acquisition=True)
 
@@ -209,9 +210,10 @@ class Nickel(Telescope.Telescope):
         if params is not None:
             print('Adding schedule to Google sheet under:',obs_date.strftime('%Y%m%d'))
             print('Observer for tonight is:',observer)
-            Logs.populate_nickel_log(sheet, params['CURRENT_SHEET'], tab_name, 
-                output_rows, date=obs_date.strftime('%Y/%m/%d'), 
-                observer=observer, start_number=str(night * 1000 + 1))
+            if log_success:
+                Logs.populate_nickel_log(sheet, params['CURRENT_SHEET'], tab_name, 
+                    output_rows, date=obs_date.strftime('%Y/%m/%d'), 
+                    observer=observer, start_number=str(night * 1000 + 1))
 
         if fieldcenters:
             self.write_fieldcenters_file(targets, fieldcenters)

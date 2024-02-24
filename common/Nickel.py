@@ -1,8 +1,8 @@
-import Constants as C
-from Target import TargetType, Target
-import Logs
-import Telescope
-import Utilities
+import common.Constants as C
+from common.Target import TargetType, Target
+import common.Logs
+import common.Telescope
+import common.Utilities
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np, csv, sys
@@ -12,7 +12,7 @@ from dateutil.parser import parse
 import os
 
 # Used with Lick Observatory
-class Nickel(Telescope.Telescope):
+class Nickel(common.Telescope.Telescope):
 
     def __init__(self):
         self.targets = None

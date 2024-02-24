@@ -1,19 +1,20 @@
-import Constants as C
-from Target import TargetType, Target
-import Logs
+import common.Constants as C
+from common.Target import TargetType, Target
+import common.Logs
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np, csv, sys
 from astropy.time import Time
 
-import Telescope
+import common.Telescope
+import os
 
 # Used with Las Campanas Observatory
-class Blanco(Telescope.Telescope):
+class Blanco(common.Telescope.Telescope):
 
     def __init__(self):
         self.targets = None
-        self.name = "Swope"
+        self.name = "Blanco"
 
         #change as of Jun 4 after mirror cleaning
         self.filters = {
@@ -31,7 +32,8 @@ class Blanco(Telescope.Telescope):
             TargetType.Supernova: self.compute_sn_exposure,
             TargetType.Template: self.compute_template_exposure,
             TargetType.Standard: self.compute_standard_exposure,
-            TargetType.GW: self.compute_gw_exposure
+            TargetType.GW: self.compute_gw_exposure,
+            TargetType.NEWFIRM: self.compute_survey_exposure,
         }
 
     def set_targets(self, targets):
@@ -117,6 +119,12 @@ class Blanco(Telescope.Telescope):
 
         tmp.exposures = exposures
 
+    def compute_survey_exposure(self, tmp):
+        exposures = {}
+        exposures.update({C.J_band: 80})
+
+        tmp.exposures = exposures
+
     def compute_gw_exposure(self, gw, s_n=5, filts=[C.r_band]):
         exposures = {}
 
@@ -140,7 +148,7 @@ class Blanco(Telescope.Telescope):
                 self.exp_funcs[tgt.type](tgt) # Sets exposures for each target by target type
 
                 # per observatory - LCO Swope
-                fudge_factor = 120. if len(tgt.exposures) > 0 else 0 # Build in a fudge factor based on # of exps GW
+                fudge_factor = 100. if len(tgt.exposures) > 0 else 0 # Build in a fudge factor based on # of exps GW
 
                 total_minutes = (sum(tgt.exposures.values()) + fudge_factor)/60. # Sum total minutes
                 tgt.total_minutes = round(total_minutes * 60./C.round_to) * C.round_to/60.
@@ -167,121 +175,106 @@ class Blanco(Telescope.Telescope):
 
         return filter_row
 
-    def write_schedule(self, observatory_name, obs_date, targets, output_files=None,
-        fieldcenters=None, pointing=None):
+    def initialize_obsfile(self, num, outdir='newfirm', subdir='scripts',
+        observer='Charlie Kilpatrick', propid='2024A-937812',
+        comment='Survey Field for NEWFIRM Infrared Survey for Transients'):
+
+        num_str = str(num).zfill(3)
+        filename = os.path.join(outdir, f'newfirm_sequence_{num_str}')
+        file = open(filename,'w')
+
+        file.write(f'PAN set obs.observer \"{observer}\" \n')
+        file.write(f'PAN set obs.propid \"{propid}\" \n')
+        file.write(f'PAN set image.comment \"{comment}\" \n')
+
+        return(file)
+
+    def make_obs_sequence_line(self, repeats=1, fowler=1, coadd=4,
+        exptime=5.0, filt='J', offsRA=0.0, offsDec=0.0, focus=None,
+        objname='default'):
+
+        if focus is None: focus = 'NONE'
+
+        line  = f'{repeats}       {fowler}       '
+        line += f'{exptime}       {filt}          '
+        line += f'{offsRA}        {offsDec}       '
+        line += f'{focus}      {objname} \n'
+
+        return(name)
+
+    def write_schedule(self, observatory_name, obs_date, targets, outdir=None,
+        output_files=None, fieldcenters=None, pointing=None, 
+        newfirm_dir='newfirm', obs_subdir='scripts', batch_size=10):
+
+        if outdir is None:
+            outdir = '.'
+
+        # Update name of NEWFIRM subdir
+        obs_date_str = obs_date.strftime('%Y%m%d')
+        newfirm_dir = f'{newfirm_dir}_{obs_date_str}'
+
+        if newfirm_dir and not os.path.exists(os.path.join(outdir, newfirm_dir)):
+            os.makedirs(os.path.join(outdir, newfirm_dir))
+
+        if not os.path.exists(os.path.join(outdir, newfirm_dir, obs_subdir)):
+            os.makedirs(os.path.join(outdir, newfirm_dir, obs_subdir))
 
         if output_files:
-            file_to_write = output_files + '.csv'
-            phot_file_to_write = output_files + '.phot'
-            phot = open(phot_file_to_write, 'w')
+            photfilename = os.path.join(outdir, newfirm_dir, f'{output_files}.txt')
+            phot = open(photfilename, 'w')
         else:
-            file_to_write = "%s_%s_%s_GoodSchedule.csv" % (observatory_name, self.name, obs_date.strftime('%Y%m%d'))
-        if fieldcenters:
-            fc = open(fieldcenters, 'w')
-            fc.write('# field ampl ra dec epoch raD decD RAoffset DecOffset \n')
-        with open(file_to_write,"w") as csvoutput:
-            writer = csv.writer(csvoutput, lineterminator="\n")
+            photfilename = "%s_%s_%s_GoodSchedule.csv" % (observatory_name, 
+                self.name, obs_date.strftime('%Y%m%d'))
+            photfilename = os.path.join(outdir, newfirm_dir, photfilename)
+            phot = open(photfilename, 'w')
 
-            output_rows = []
-            header_row = []
-            header_row.append("Object Name")
-            header_row.append("Right Ascension")
-            header_row.append("Declination")
-            header_row.append("Estimated Magnitude")
-            header_row.append("Filter")
-            header_row.append("Exposure Time")
-            output_rows.append(header_row)
+        num_scripts = int(np.ceil(float(len(targets))/batch_size))
+        curr_script_num = 1
+        curr_script = self.initialize_obsfile(curr_script_num, 
+            outdir=os.path.join(outdir, newfirm_dir), subdir=obs_subdir)
 
-            last_filter = C.r_band
-            for t in targets:
-                ra = t.coord.ra.hms
-                dec = t.coord.dec.dms
+        for i,t in enumerate(targets):
+            ra = t.coord.ra.hms
+            dec = t.coord.dec.dms
 
-                hmsdms = t.coord.to_string(sep=':', style='hmsdms', precision=3)
-                ra_hms = hmsdms.split()[0]
-                dec_dms = hmsdms.split()[1]
+            ra_deg = t.coord.ra.deg
+            dec_deg = t.coord.dec.deg
 
-                if output_files:
-                    for filt in t.exposures.keys():
+            hmsdms = t.coord.to_string(sep=':', style='hmsdms', precision=3)
+            ra_hms = hmsdms.split()[0]
+            dec_dms = hmsdms.split()[1]
 
-                        phot_line = '{name} {name} {ra} {dec} {filt} '+\
-                            '{exptime} {m3sigma} \n'
+            curr_script.write(f'TCS slew {ra_hms} {dec_dms} \n')
 
-                        zeropoint = self.filters[filt]
-                        exptime = t.exposures[filt]
-                        m3sigma = self.limiting_magnitude(zeropoint, exptime, 3)
+            obs_sequence_file = f'{t.name}_sequence.obs'
+            fullobsfile = os.path.join(outdir, newfirm_dir, obs_subdir, 
+                obs_sequence_file)
+            obs_sequence = open(fullobsfile, 'w')
 
-                        phot_line = phot_line.format(name=t.name, ra=ra_hms,
-                            dec=dec_dms, filt=filt, exptime=exptime,
-                            m3sigma=m3sigma)
+            if t.exposures[C.J_band]==80.0:
+                obs_sequence.write(f'repeats\tfowler\tcoadds\texp.time\tfiltername\toffsRA\toffsDEC\tfocus\tobject\n')
+                obs_sequence.write(f'1\t1\t4\t   5.000\tJX       \t-75.00\t0.00\tNONE\t{t.name}\n')
+                obs_sequence.write(f'1\t1\t4\t   5.000\tJX       \t0.00\t75.00\tNONE\t{t.name}\n')
+                obs_sequence.write(f'1\t1\t4\t   5.000\tJX       \t75.00\t0.00\tNONE\t{t.name}\n')
+                obs_sequence.write(f'1\t1\t4\t   5.000\tJX       \t0.00\t-75.00\tNONE\t{t.name}\n')
 
-                        phot.write(phot_line)
+            obs_sequence.close()
 
-                if fieldcenters:
-                    fc_line = '{name:<40} {ampl} {ra_hms} {dec_dms} J2000  '+\
-                        '{ra:>11}  {dec:>11}    0.0000000    0.0000000 \n'
-                    fc.write(fc_line.format(name=t.name.lower(), ampl='1',
-                        ra_hms=ra_hms, dec_dms=dec_dms, ra=t.coord.ra.degree,
-                        dec=t.coord.dec.degree))
+            curr_script.write(f'seqrun.py -run {obs_sequence_file} \n')
 
-                tgt_row = []
-                tgt_row.append(t.name.lower())
-                tgt_row.append("=\"%02d:%02d:%0.1f\"" % (ra[0],ra[1],ra[2]))
-
-                dec_field = ("=\"%02d:%02d:%0.1f\"" % (dec[0],np.abs(dec[1]),np.abs(dec[2])))
-                # Python has a -0.0 object. If the deg is this (because object lies < 60 min south), the string formatter will drop the negative sign
-                if t.coord.dec < 0.0 and dec[0] == 0.0:
-                    dec_field = ("=\"-0:%02d:%0.1f\"" % (np.abs(dec[1]),np.abs(dec[2])))
-
-                tgt_row.append(dec_field)
-                tgt_row.append(None)
-
-                # Last criterion: if previous obj had full 6 filters, but this target only has 3
-                if (last_filter == C.r_band) or \
-                   (last_filter == C.i_band) or \
-                    (last_filter == C.g_band) or \
-                    (last_filter == C.B_band and len(t.exposures) < 6):
-
-                    # tgt_row.append(C.r_band)   #comment out for GW
-                    # tgt_row.append(10) # Acquisition in r #comment out for GW
-                    output_rows.append(tgt_row)  #do not uncomment
-
-                    # Start in riguVB order
-                    output_rows.append(self.swope_filter_row(C.r_band, t.exposures[C.r_band]))  #comment out for GW
-                    # output_rows.append(self.swope_filter_row(C.i_band, t.exposures[C.i_band]))
-                    # output_rows.append(self.swope_filter_row(C.g_band, t.exposures[C.g_band]))  #comment out for GW
-                    last_filter = C.g_band
-
-                    if len(t.exposures) > 3:
-                        if C.u_band in t.exposures:
-                            output_rows.append(self.swope_filter_row(C.u_band, t.exposures[C.u_band]))
-
-                        # output_rows.append(self.swope_filter_row(C.u_band, t.exposures[C.u_band]))
-                        output_rows.append(self.swope_filter_row(C.V_band, t.exposures[C.V_band]))
-                        output_rows.append(self.swope_filter_row(C.B_band, t.exposures[C.B_band]))
-                        last_filter = C.B_band
-
-                # Flip order: BVugir
-                else:
-                    tgt_row.append(C.B_band)
-                    tgt_row.append(20) # Acquisition in B
-                    output_rows.append(tgt_row)
-
-                    output_rows.append(self.swope_filter_row(C.B_band, t.exposures[C.B_band]))
-                    output_rows.append(self.swope_filter_row(C.V_band, t.exposures[C.V_band]))
-
-                    if C.u_band in t.exposures:
-                        output_rows.append(self.swope_filter_row(C.u_band, t.exposures[C.u_band]))
-
-                    output_rows.append(self.swope_filter_row(C.g_band, t.exposures[C.g_band]))
-                    output_rows.append(self.swope_filter_row(C.i_band, t.exposures[C.i_band]))
-                    output_rows.append(self.swope_filter_row(C.r_band, t.exposures[C.r_band]))
-                    last_filter = C.r_band
-
-            writer.writerows(output_rows)
+            if (i+1)%batch_size==0 and i+1 < len(targets):
+                curr_script.close()
+                curr_script_num += 1 
+                curr_script = self.initialize_obsfile(curr_script_num, 
+                    outdir=os.path.join(outdir, newfirm_dir), subdir=obs_subdir)
 
             if output_files:
-                phot.close()
+                phot_line = '{idx}_{name} {ra} {dec} 2000.0 \n'
+                phot_line = phot_line.format(idx=str(i+1).zfill(3), 
+                    name=t.name, ra=ra_hms,dec=dec_dms)
+                phot.write(phot_line)
 
-            if fieldcenters:
-                fc.close()
+        curr_script.close()
+
+        if output_files:
+            phot.close()

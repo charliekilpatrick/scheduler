@@ -1,13 +1,13 @@
-import Constants as C
-from Target import TargetType, Target
-import Logs
-import Telescope
-import Utilities
+import common.Constants as C
+from common.Target import TargetType, Target
+import common.Logs
+import common.Telescope
+import common.Utilities
 
 import numpy as np
 import itertools
 
-class Thacher(Telescope.Telescope):
+class Thacher(common.Telescope.Telescope):
 
     def __init__(self):
         self.targets = None

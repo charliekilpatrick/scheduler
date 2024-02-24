@@ -88,7 +88,7 @@ def blank_target_table():
 # distance modulus for a gravitational wave event (DISTMEAN from healpix),
 # which will be used to calculate the exposure time required
 def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
-    priority=1.0, username='', password=''):
+    priority=1.0, username='', password='', newfirm=False):
 
     if 'https://' in file_name or 'http://' in file_name:
         # Assume URL
@@ -112,6 +112,11 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
         if 'name' in key and 'name' not in data_table.keys():
             data_table.rename_column(key, 'name')
             break
+        if 'metric' in key and 'priority' not in data_table.keys():
+            data_table['priority'] = data_table['metric']
+
+    # Only want to schedule each target once, so get rid of non-unique names
+    data_table = unique(data_table, keys='name')
 
     for key in data_table.keys():
         if key in ['fieldra','r.a.','right_ascension']:
@@ -128,7 +133,7 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
 
     if 'filter' in data_table.keys():
         mask = np.array([r['filter'] in ['r-ZTF','g-ZTF','r','i','B','V','g',
-                'z'] for r in data_table])
+                'z','J','H','Ks'] for r in data_table])
         data_table = data_table[mask]
 
     # We can get duplicte targets from the queries, weed these by iterating
@@ -202,6 +207,8 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
             if 'a_lambda' in data_table.keys():
                 # Adjust the magnitudes to account for a_lambda
                 new_row['mag'] = new_row['mag'] + row['a_lambda']
+        elif newfirm:
+            new_row['type'] = 'NEWFIRM'
         elif 'type' in row.colnames:
             new_row['type'] = row['type']
         else:

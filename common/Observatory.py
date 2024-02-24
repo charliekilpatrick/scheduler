@@ -1,7 +1,7 @@
-import Constants as C
-import Telescope
-from Utilities import UTC_Offset
-from Utilities import download_ps1_catalog
+import common.Constants as C
+import common.Telescope
+from common.Utilities import UTC_Offset
+from common.Utilities import download_ps1_catalog
 
 import ephem
 from dateutil.parser import parse
@@ -20,11 +20,12 @@ from astroquery.vizier import Vizier
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.table import Column, Table
-from astropy.time import Time
+from astropy.time import Time, TimeDelta
 
 class Observatory():
     def __init__(self, name, lon, lat, elevation, horizon, telescopes,
-        utc_offset, utc_offset_name, obs_date=None):
+        utc_offset, utc_offset_name, obs_date=None, start_time=None,
+        end_time=None, first=False, second=False):
 
         self.name = name
 
@@ -53,14 +54,18 @@ class Observatory():
 
         self.utc_begin_night = None
         self.utc_end_night = None
+        self.utc_middle_night = None
         self.local_begin_night = None
         self.local_end_night = None
+        self.local_middle_night = None
 
         self.length_of_night = 0.
 
-        self.update_obs_date(self.obs_date)
+        self.update_obs_date(self.obs_date, start_time=start_time,
+            end_time=end_time, first=first, second=second)
 
-    def update_obs_date(self, date):
+    def update_obs_date(self, date, start_time=None, end_time=None,
+        first=False, second=False):
 
         self.ephemeris = ephem.Observer()
         self.ephemeris.lon = self.lon
@@ -74,14 +79,38 @@ class Observatory():
         self.obs_date = obs_date
 
         self.ephemeris.date = (self.obs_date - timedelta(hours=self.utc_offset))
+
         self.utc_begin_night = self.ephemeris.next_setting(ephem.Sun(), 
             use_center=True).datetime()
         self.utc_end_night = self.ephemeris.next_rising(ephem.Sun(), 
             use_center=True).datetime()
 
+        night_duration = self.utc_end_night - self.utc_begin_night
+        self.utc_middle_night = self.utc_begin_night + 0.5*night_duration
+
+        if first:
+            self.utc_end_night = self.utc_middle_night
+        elif second:
+            self.utc_begin_night = self.utc_middle_night
+        elif start_time is not None:
+            hour = start_time[0:2]
+            minute = start_time[2:4]
+            if int(hour)<12:
+                use_date = Time(date_str) + TimeDelta(86400*u.s)
+                use_date_str = use_date.datetime.strftime('%Y-%m-%d')
+            else:
+                use_date_str = date_str
+            self.utc_begin_night = parse("%s %s:%s" % (use_date_str, hour, minute))
+        elif end_time is not None:
+            hour = end_time[0:2]
+            minute = end_time[2:4]
+            self.utc_end_night = parse("%s %s:%s" % (date_str, hour, minute))
+
         self.local_begin_night = pytz.utc.localize(self.utc_begin_night) \
             .astimezone(UTC_Offset(self.utc_offset,self.utc_offset_name))
         self.local_end_night = pytz.utc.localize(self.utc_end_night) \
+            .astimezone(UTC_Offset(self.utc_offset,self.utc_offset_name))
+        self.local_middle_night = pytz.utc.localize(self.utc_middle_night) \
             .astimezone(UTC_Offset(self.utc_offset,self.utc_offset_name))
 
         # Total time in night
@@ -267,9 +296,98 @@ class Observatory():
 
         return(targets)
 
+    def get_slews(self, idxs, slews):
+        total_slew = 0
+        idx0 = idxs[0]
+        for i,idx1 in enumerate(idxs):
+            if i==0: continue
+            total_slew += slews[idx0, idx1]
+            idx0 = idx1
+        return(total_slew)
+
+    def swapPositions(self, l, pos1, pos2):
+        l[pos1], l[pos2] = l[pos2], l[pos1]
+        return l
+
+    def create_slews(self, o):
+
+        coords = SkyCoord(np.array([t.coord for t in o]))
+        slews = []
+        for c in coords:
+            slews.append(list(c.separation(coords).to(u.deg).value))
+        all_slews = np.array(slews)
+
+        return(all_slews)
+
+
+    def minimize_slews(self, o):
+
+        all_slews = self.create_slews(o)
+
+        curr_targets = copy.copy(o)
+        idx = list(np.arange(len(o)))
+
+        i=0
+        curr_idx = list(copy.deepcopy(idx))
+        iter_idx = list(copy.deepcopy(idx))
+        curr_slews = self.get_slews(curr_idx, all_slews)
+        for i in np.arange(len(idx)):
+            if i==0: continue
+
+            curr_i = i
+
+            while curr_i > 0:
+                iter_targets = copy.deepcopy(curr_targets)
+                iter_idx = copy.deepcopy(curr_idx)
+
+                iter_targets = self.swapPositions(iter_targets, curr_i-1, curr_i)
+                iter_idx = self.swapPositions(iter_idx, curr_i-1, curr_i)
+                iter_slews = self.get_slews(iter_idx, all_slews)
+
+                if iter_slews < curr_slews:
+                    curr_slews = iter_slews
+                    curr_idx = copy.deepcopy(iter_idx)
+                    curr_targets = copy.deepcopy(iter_targets)
+                
+                curr_i -= 1
+
+        o = copy.copy(curr_targets)
+
+        return(o)
+
+    def run_slew_minimization(self, o):
+
+        print('Minimizing slews...')
+        all_slews = self.create_slews(o)
+        idx = list(np.arange(len(o)))
+        current_slew = self.get_slews(idx, all_slews)
+        current_slew = float('%.4f'%current_slew)
+        for i in np.arange(1):
+            print(f'Iteration #{i+1}')
+            o = self.minimize_slews(o)
+
+        all_slews = self.create_slews(o)
+        idx = list(np.arange(len(o)))
+        new_slew = self.get_slews(list(np.arange(len(o))), all_slews)
+        new_slew = float('%.4f'%new_slew)
+        x = float('%.4f'%((1 - new_slew/current_slew)*100))
+
+        print(f'Improved slews from {current_slew} deg->{new_slew} deg ({x}%)')
+
+    def print_target_list(self, o):
+
+        for tgt in o:
+            fmt = '{name}: {exposures}; {total} min; Priority: {priority}, RA: {ra}, Dec: {dec}'
+            ra, dec = tgt.coord.to_string(style='hmsdms', sep=':', precision=3).split()
+            fmt = fmt.format(name=tgt.name, exposures=tgt.exposures,
+                total=tgt.total_minutes, priority='%7.4f'%tgt.priority,
+                ra=ra, dec=dec)
+            print(fmt)
 
     def schedule_targets(self, telescope_name, preview_plot=False,
-        output_files=None, fieldcenters=None, cat_params={}, obs_date=None):
+        output_files=None, fieldcenters=None, cat_params={}, obs_date=None,
+        start_time=None, end_time=None, minimize_slew=False, outdir=None,
+        first=False, second=False):
 
         # Update internal Target list with priorities and exposures
         telescope = self.telescopes[telescope_name]
@@ -277,11 +395,14 @@ class Observatory():
         telescope.compute_net_priorities()
         targets = telescope.get_targets()
 
-        if obs_date is not None:
+        if (obs_date is not None or start_time is not None or 
+            end_time is not None or first or second):
 
             self.__init__(self.name, self.lon, self.lat, self.elevation, 
                 self.horizon, self.telescopes, self.utc_offset, 
-                self.utc_offset_name, obs_date=obs_date)
+                self.utc_offset_name, obs_date=obs_date,
+                start_time=start_time, end_time=end_time,
+                first=first, second=second)
 
             # Recompute exposures and priorities for new telescope night
             targets_copy = []
@@ -295,9 +416,11 @@ class Observatory():
             telescope.compute_net_priorities()
             targets = telescope.get_targets()
 
-        else:
-
+        if obs_date is None:
             obs_date = self.obs_date
+
+        print('Start time',self.utc_begin_night)
+        print('End time',self.utc_end_night)
 
         def packable(goodtime, tgt):
             """Find nearby time intervals that amount to the observing time of a tile"""
@@ -332,7 +455,6 @@ class Observatory():
         targets = self.filter_targets(targets)
 
         print('\n\nScheduling targets:\n\n')
-
         time_slots = np.zeros(length_of_night)
         o = []
         bad_o = []
@@ -404,51 +526,14 @@ class Observatory():
                     break
 
         print('\n\nCurrent schedule:')
-        o = sorted(o, key = operator.attrgetter('starting_index'))
+        o = sorted(o, key=lambda x: x.coord.ra.degree)
+        self.print_target_list(o)
 
-        for tgt in o:
-            fmt = '{name}: {exposures}; {total} min; Priority: {priority}'
-            fmt = fmt.format(name=tgt.name, exposures=tgt.exposures,
-                total=tgt.total_minutes, priority='%7.4f'%tgt.priority)
-            print(fmt)
-
-        self.ephemeris.date = self.utc_begin_night
-        lst = self.ephemeris.sidereal_time()
-        vunits = (u.hour, u.deg)
-        zenith = SkyCoord(str(lst), self.ephemeris.lat, unit=vunits)
-
-        # Find the coordinate with the largest value that's within ~5 hour of
-        # zenith at the start of the night
-        print('\n\nSorting by right ascension...\n\n')
-
-        ra_limit = zenith.ra.degree - 75.0
-        if ra_limit < 0: ra_limit = ra_limit + 360.0
-
-        # Now get target with smallest RA that is larger than ra_limit
-        o = sorted(o, key = lambda t: t.coord.ra.degree)
-        target = None
-        idx = 0
-        for i,tgt in enumerate(o):
-            if tgt.coord.ra.degree > ra_limit:
-                target = tgt
-                idx = i
-                break
-
-        if idx-1 > 0:
-            o = o[idx:]+o[0:idx-1]
+        # If we're minimizing slew, then run minimization algorithm
+        if minimize_slew: self.run_slew_minimization(o)
 
         print('\n\nFinal schedule:')
-        for tgt in o:
-            fmt = '{name:<22}: {exposures:<32}; {total:<5} min; Priority: {priority}'
-            fmt = fmt.format(name=tgt.name,
-                exposures=", ".join("=".join([_[0],str(int(_[1]))])
-                    for _ in tgt.exposures.items()),
-                total=str(tgt.total_minutes), priority='%7.4f'%tgt.priority)
-            print(fmt)
-
-            # Also get UTC start time
-            tgt.utc_start_time = self.utc_time_array[tgt.starting_index]
-
+        self.print_target_list(o)
 
         self.compute_night_fill_fraction(o)
 
@@ -466,5 +551,6 @@ class Observatory():
 
         date = Time(obs_date)
 
-        telescope.write_schedule(self.name, date, o, output_files=output_files,
-            fieldcenters=fieldcenters, pointing=self.pointing)
+        telescope.write_schedule(self.name, date, o, outdir=outdir,
+            output_files=output_files, fieldcenters=fieldcenters, 
+            pointing=self.pointing)

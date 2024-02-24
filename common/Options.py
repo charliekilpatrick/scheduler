@@ -27,6 +27,8 @@ def add_options():
         help="Base name of the output schedule file (csv) and summary (png).")
     parser.add_argument("-fc", "--fieldcenter",
         help="Name of the output ordered fieldcenters file with targets.")
+    parser.add_argument("--newfirm", default=False, action='store_true',
+        help="Schedule targets for NEWFIRM survey strategy.")
     parser.add_argument("--target", default=-17.0, type=float,
         help="Target mag for gravitational wave observations.")
     parser.add_argument("--usecat", default=False, action='store_true',
@@ -47,6 +49,16 @@ def add_options():
         help="Username for parsing input target list when it is a URL.")
     parser.add_argument("--password", default='', type=str,
         help="Password for parsing input target list when it is a URL.")
+    parser.add_argument("--minimize-slew", default=False, action="store_true",
+        help="Minimize slew time between targets while creating schedule.")
+    parser.add_argument("--newfirm-dir", default='newfirm', type=str,
+        help="Output directory for NEWFIRM observing scripts.")
+    parser.add_argument("--first", default=False, action='store_true',
+        help="""Only schedule targets for first half (overrides --start,
+        --end, and conflicts with --second).""")
+    parser.add_argument("--second", default=False, action='store_true',
+        help="""Only schedule targets for second half (overrides --start,
+        --end, and conflicts with --first).""")
     
     args = parser.parse_args()
 

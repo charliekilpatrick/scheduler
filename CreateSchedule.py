@@ -1,20 +1,29 @@
-import Constants
-import Options
-import Utilities
-from Target import TargetType, Target
-from observatory_defs import observatories
+# Internal dependencies
+from common import Constants
+from common import Options
+from common import Utilities
+from common.Target import TargetType, Target
+from common.observatory_defs import observatories
 
+# Other dependencies
 from dateutil.parser import parse
-import warnings
 from astropy.coordinates import SkyCoord
-from astropy import units as unit
 from astropy.time import Time
-import os,sys
+from astropy import units as unit
+import os
+import sys
+import warnings
 warnings.filterwarnings('ignore')
 
 def main():
 
     args = Options.add_options()
+
+    if args.obstele is None:
+        raise Exception(f'ERROR: --obstele cannot be None')
+
+    if args.first and args.second:
+        raise Exception(f'ERROR: cannot pass both --first and --second.')
 
     file_name = args.file
     obs_date = args.date
@@ -25,7 +34,12 @@ def main():
     startNow = args.now in ['True']
     startTime = args.start
     endTime = args.end
+    first = args.first
+    second = args.second
+    outdir = args.outdir
 
+    if first or second: start = None ; end = None
+    
     if args.target:
         target_mag = float(args.target)
     else:
@@ -40,7 +54,7 @@ def main():
     if file_name is not None:
         target_data = Utilities.get_targets(file_name, gw=args.gw, 
             target_mag=target_mag, username=args.username, 
-            password=args.password)
+            password=args.password, newfirm=args.newfirm)
     # Otherwise download a target list from YSE PZ
     else:
         message = '\n\nDownloading target list for {tel}...\n\n'
@@ -68,6 +82,9 @@ def main():
 
             if target['type'] == 'STD':
                 target_type = TargetType.Standard
+                disc_date = None
+            elif target['type'] == 'NEWFIRM':
+                target_type = TargetType.NEWFIRM
                 disc_date = None
             elif target['type'] == 'TMP':
                 target_type = TargetType.Template
@@ -104,9 +121,12 @@ def main():
         print("First %s target: %s" % (tele_keys[i], targets[0].name))
         print("Last %s target: %s" % (tele_keys[i], targets[-1].name))
 
-        obs.schedule_targets(tele_keys[i], preview_plot,
+        obs.schedule_targets(tele_keys[i], preview_plot, outdir=outdir,
             output_files=output_files, fieldcenters=fieldcenters,
-            cat_params=cat_params, obs_date=obs_date)
+            cat_params=cat_params, obs_date=obs_date,
+            start_time=args.start, end_time=args.end,
+            first=first, second=second,
+            minimize_slew=args.minimize_slew)
 
 if __name__ == "__main__": main()
 

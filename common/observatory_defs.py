@@ -1,11 +1,11 @@
-from Observatory import Observatory
-import Utilities
+from common.Observatory import Observatory
+import common.Utilities as Utilities
 
-from Swope import Swope
-from Nickel import Nickel
-from Thacher import Thacher
-from T80S import T80S
-from Blanco import Blanco
+from common.Swope import Swope
+from common.Nickel import Nickel
+from common.Thacher import Thacher
+from common.T80S import T80S
+from common.Blanco import Blanco
 
 lco = Observatory(
         name="LCO",

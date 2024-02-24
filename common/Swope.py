@@ -1,15 +1,15 @@
-import Constants as C
-from Target import TargetType, Target
-import Logs
+import common.Constants as C
+from common.Target import TargetType, Target
+import common.Logs
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np, csv, sys
 from astropy.time import Time
 
-import Telescope
+import common.Telescope
 
 # Used with Las Campanas Observatory
-class Swope(Telescope.Telescope):
+class Swope(common.Telescope.Telescope):
 
     def __init__(self):
         self.targets = None

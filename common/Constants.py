@@ -1,6 +1,6 @@
 # Constants
-airmass_threshold = 2.4 # relative airmass
-round_to = 15 # seconds
+airmass_threshold = 1.6 # relative airmass
+round_to = 20 # seconds
 
 # Filter constants
 u_band = 'u'

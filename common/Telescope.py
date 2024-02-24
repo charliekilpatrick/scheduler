@@ -1,6 +1,6 @@
-import Constants as C
-from Target import TargetType, Target
-import Logs
+import common.Constants as C
+from common.Target import TargetType, Target
+import common.Logs
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np, csv, sys

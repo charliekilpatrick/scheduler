@@ -8,6 +8,7 @@ class TargetType(Enum):
     Standard = 3
     GW = 4
     Force = 5
+    NEWFIRM = 6
 
 class Target:
     def __init__(self, name, coord, priority, target_type, observatory_lat,

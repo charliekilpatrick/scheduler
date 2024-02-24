@@ -223,8 +223,7 @@ class Blanco(common.Telescope.Telescope):
             photfilename = os.path.join(outdir, newfirm_dir, f'{output_files}.txt')
             phot = open(photfilename, 'w')
         else:
-            photfilename = "%s_%s_%s_GoodSchedule.csv" % (observatory_name, 
-                self.name, obs_date.strftime('%Y%m%d'))
+            photfilename = f"newfirm_schedule_{obs_date_str}.txt"
             photfilename = os.path.join(outdir, newfirm_dir, photfilename)
             phot = open(photfilename, 'w')
 
@@ -268,13 +267,10 @@ class Blanco(common.Telescope.Telescope):
                 curr_script = self.initialize_obsfile(curr_script_num, 
                     outdir=os.path.join(outdir, newfirm_dir), subdir=obs_subdir)
 
-            if output_files:
-                phot_line = '{idx}_{name} {ra} {dec} 2000.0 \n'
-                phot_line = phot_line.format(idx=str(i+1).zfill(3), 
-                    name=t.name, ra=ra_hms,dec=dec_dms)
-                phot.write(phot_line)
+            phot_line = '{idx}_{name} {ra} {dec} 2000.0 \n'
+            phot_line = phot_line.format(idx=str(i+1).zfill(3), name=t.name, 
+                ra=ra_hms,dec=dec_dms)
+            phot.write(phot_line)
 
         curr_script.close()
-
-        if output_files:
-            phot.close()
+        phot.close()

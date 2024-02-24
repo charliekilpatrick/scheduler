@@ -2,6 +2,7 @@
 import os
 import sys
 from dateutil.parser import parse
+import make_finders
 
 def add_options(parser=None):
     import argparse
@@ -13,6 +14,10 @@ def add_options(parser=None):
         help='Only make for first half.')
     parser.add_argument('--second', default=False, action='store_true',
         help='Only make for second half.')
+    parser.add_argument('--compress', default=False, action='store_true',
+        help='Compress output of NEWFIRM directory into a tarball.')
+    parser.add_argument('--finders', default=False, action='store_true',
+        help='Make finder charts from target file in NEWFIRM output dir.')
 
     options = parser.parse_args()
 
@@ -39,5 +44,23 @@ def main():
 
     print(cmd)
     os.system(cmd)
+
+    if options.compress:
+        outdir = f'newfirm_{datestr}'
+        os.chdir(f'{ndir}/obsplans')
+        cmd = f'tar --exclude .DS_Store -czvf {outdir}.tar.gz {outdir}'
+        print(cmd)
+        os.system(cmd)
+
+    if options.finders:
+        fulloutdir = os.path.join(ndir, 'obsplans', f'newfirm_{datestr}')
+        fulloutfile = os.path.join(fulloutdir, f'newfirm_schedule_{datestr}.txt')
+
+        outdir = os.path.join(ndir, 'finders', f'newfirm_{datestr}')
+
+        print('Make finders')
+        make_finders.make_finders(fulloutfile, directory=outdir,
+            clobber=False)
+
 
 if __name__=="__main__": main()

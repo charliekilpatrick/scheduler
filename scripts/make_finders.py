@@ -16,7 +16,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-def make_finders(target_list, directory='finders'):
+def make_finders(target_list, directory='finders', clobber=False):
 
     sv = SkyView()
 
@@ -29,8 +29,6 @@ def make_finders(target_list, directory='finders'):
               'deedger': 'skyview.process.Deedger',
               'survey': ['2MASS-J']}
 
-    target_basename = os.path.basename(target_list).replace('.txt','')
-
     target_table = ascii.read(target_list, names=('field','ra','dec','epoch'))
 
     for row in target_table:
@@ -39,6 +37,11 @@ def make_finders(target_list, directory='finders'):
 
         rah,decd = coord.to_string(style='hmsdms', sep=':', precision=3).split()
         name = row['field']
+
+        outimagename = os.path.join(directory, str(name+'_finder.png'))
+        if os.path.exists(outimagename) and not clobber:
+            print(f'WARNING: {outimagename} exists and clobber=False.  Skipping...')
+            continue
 
         images = sv.get_images(position=coord, **params)
         image = images[0][0]
@@ -49,8 +52,6 @@ def make_finders(target_list, directory='finders'):
                    sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
 
         image.data = image.data - bkg.background
-
-        image.writeto('image.fits',overwrite=True)
 
         wcs = astropy.wcs.WCS(image.header)
 

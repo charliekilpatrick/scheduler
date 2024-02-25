@@ -1,17 +1,21 @@
-# gw_scheduler
-GW Scheduler based on Dave Coulter's SN scheduler, with help from Tiara Hung, Jay Sarva, Karelle Sielez.
+# Scheduler
 
-Some dependencies needed: 
+Telescope scheduling code based on Dave Coulter's scheduler (https://github.com/davecoulter/Scheduler), with help from Tiara Hung, Jay Sarva, Karelle Sielez.
 
-pip install ephem
+### Installation
 
-Usage: (python 3)
+Install dependencies via `requirements.txt`.
 
+### Usage
 
-python master.py --tiles_file example_tiles.txt --date 20190802 --telescope Swope 
+Basic examples are given under `scripts/examples.sh`.  Given a `astropy.io.ascii` interpretable target file `targets.txt` with field name, RA, and Dec, the scheduler can create a target list for a specific telescope (e.g., `LCO:Swope`) for the date August 17, 2017 with:
 
-Options include: --start HHMM --end HHMM or --now True (UT times); --asap (observe high-priority targets first)
+```
+python CreateSchedule.py -f targets.txt --obstele LCO:Swope --date 2017-08-17
+```
 
-Telescope options: Swope, Thacher, Nickel
+Target-specific options for adjusting exposure times, target limiting magnitude, and observing bands can be explored via the options (`python CreateSchedule.py -h`) or in the specific telescope modules in `common`.
 
-Note: exposure times, bands, etc, can be changed in the Telescopes.py file
+### Contact
+
+For bugs, issues, or questions about this code, contact Charlie Kilpatrick at ckilpatrick@northwestern.edu.

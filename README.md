@@ -8,7 +8,7 @@ Install dependencies via `requirements.txt`.
 
 ### Usage
 
-Basic examples are given under `scripts/examples.sh`.  Given a `astropy.io.ascii` interpretable target file `targets.txt` with field name, RA, and Dec, the scheduler can create a target list for a specific telescope (e.g., `LCO:Swope`) for the date August 17, 2017 with:
+Basic examples are given under `scripts/example.sh`.  Given a `astropy.io.ascii` interpretable target file `targets.txt` with field name, RA, and Dec, the scheduler can create a target list for a specific telescope (e.g., `LCO:Swope`) for the date August 17, 2017 with:
 
 ```
 python CreateSchedule.py -f targets.txt --obstele LCO:Swope --date 2017-08-17

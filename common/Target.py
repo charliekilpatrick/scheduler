@@ -10,6 +10,27 @@ class TargetType(Enum):
     Force = 5
     NEWFIRM = 6
 
+def handle_target_type(target):
+
+    target_type = None
+    disc_date = None
+    if target['type'] == 'STD':
+        target_type = TargetType.Standard
+        disc_date = None
+    elif target['type'] == 'NEWFIRM':
+        target_type = TargetType.NEWFIRM
+        disc_date = None
+    elif target['type'] == 'TMP':
+        target_type = TargetType.Template
+    elif target['type'] == 'SN':
+        target_type = TargetType.Supernova
+    elif target['type'] == 'GW':
+        target_type = TargetType.GW
+    else:
+        raise ValueError('Unrecognized target type!')
+
+    return(target_type, disc_date)
+
 class Target:
     def __init__(self, name, coord, priority, target_type, observatory_lat,
                  sidereal_radian_array, ref_date=None, apparent_mag=None,

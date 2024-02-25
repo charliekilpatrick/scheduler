@@ -233,6 +233,10 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
 
         table.add_row(new_row)
 
+    if 'orig_priority' not in table.keys():
+        opri_col = Column([None]*len(table), name='orig_priority')
+        table.add_column(opri_col)
+
     return(table)
 
 def download_ps1_catalog(target, Mmax=18.0, radius=0.05):

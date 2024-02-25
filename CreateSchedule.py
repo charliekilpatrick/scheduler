@@ -2,7 +2,7 @@
 from common import Constants
 from common import Options
 from common import Utilities
-from common.Target import TargetType, Target
+from common.Target import TargetType, Target, handle_target_type
 from common.observatory_defs import observatories
 
 # Other dependencies
@@ -15,51 +15,23 @@ import sys
 import warnings
 warnings.filterwarnings('ignore')
 
-def main():
-
-    args = Options.add_options()
-
-    if args.obstele is None:
-        raise Exception(f'ERROR: --obstele cannot be None')
-
-    if args.first and args.second:
-        raise Exception(f'ERROR: cannot pass both --first and --second.')
-
-    file_name = args.file
-    obs_date = args.date
-    observatory_telescopes = args.obstele.split(",")
-    preview_plot = args.plot
-    fieldcenters = args.fieldcenter
-    output_files = args.output
-    startNow = args.now in ['True']
-    startTime = args.start
-    endTime = args.end
-    first = args.first
-    second = args.second
-    outdir = args.outdir
-
-    if first or second: start = None ; end = None
-    
-    if args.target:
-        target_mag = float(args.target)
-    else:
-        target_mag = -17.0
-
-    obs_keys = [o.split(":")[0] for o in observatory_telescopes]
-    tele_keys = [t.split(":")[1] for t in observatory_telescopes]
-
-    cat_params = Options.parse_cat_params(args)
-
+def get_target_data(args):
     # If a target list is provided via the file name then use it
-    if file_name is not None:
-        target_data = Utilities.get_targets(file_name, gw=args.gw, 
-            target_mag=target_mag, username=args.username, 
-            password=args.password, newfirm=args.newfirm)
+    target_data = None
+    if args.file is not None:
+        for file in args.file:
+            targ_data = Utilities.get_targets(file, gw=args.gw, 
+                target_mag=args.target_mag, username=args.username, 
+                password=args.password, newfirm=args.newfirm)
+            if target_data is None:
+                target_data = targ_data
+            else:
+                target_data = vstack([target_data, targ_data])
     # Otherwise download a target list from YSE PZ
     else:
         message = '\n\nDownloading target list for {tel}...\n\n'
-        print(message.format(tel=tele_keys[0]))
-        target_data = download_targets(tele_keys[0])
+        print(message.format(tel=args.tele_keys[0]))
+        target_data = download_targets(args.tele_keys[0])
 
     # Check that we got some target data
     if target_data is None:
@@ -67,38 +39,20 @@ def main():
         print(error)
         sys.exit(1)
 
-    for i in range(len(observatory_telescopes)):
+    return(target_data)
+
+def main():
+
+    args = Options.handle_options()
+    target_data = get_target_data(args)
+
+    for i,obs in enumerate(args.observatories):
 
         targets = []
-        obs = observatories[obs_keys[i]]
-
         for target in target_data:
 
-            target_type = None
-            disc_date = None
-
-            coord = SkyCoord(target['ra'], target['dec'],
-                unit='deg')
-
-            if target['type'] == 'STD':
-                target_type = TargetType.Standard
-                disc_date = None
-            elif target['type'] == 'NEWFIRM':
-                target_type = TargetType.NEWFIRM
-                disc_date = None
-            elif target['type'] == 'TMP':
-                target_type = TargetType.Template
-            elif target['type'] == 'SN':
-                target_type = TargetType.Supernova
-            elif target['type'] == 'GW':
-                target_type = TargetType.GW
-            else:
-                raise ValueError('Unrecognized target type!')
-
-            if 'orig_priority' in target.colnames:
-                orig_priority=target['orig_priority']
-            else:
-                orig_priority=None
+            coord = Utilities.parse_coord(target['ra'], target['dec'])
+            target_type, disc_date = handle_target_type(target)
 
             targets.append(
                 Target(
@@ -111,21 +65,21 @@ def main():
                     ref_date=None,
                     apparent_mag=target['mag'],
                     halimit=args.halimit,
-                    orig_priority=orig_priority
+                    orig_priority=target['orig_priority']
                 )
             )
 
-        obs.telescopes[tele_keys[i]].set_targets(targets)
+        obs.telescopes[args.tele_keys[i]].set_targets(targets)
 
-        print("# of %s targets: %s" % (tele_keys[i], len(targets)))
-        print("First %s target: %s" % (tele_keys[i], targets[0].name))
-        print("Last %s target: %s" % (tele_keys[i], targets[-1].name))
+        print("# of %s targets: %s" % (args.tele_keys[i], len(targets)))
+        print("First %s target: %s" % (args.tele_keys[i], targets[0].name))
+        print("Last %s target: %s" % (args.tele_keys[i], targets[-1].name))
 
-        obs.schedule_targets(tele_keys[i], preview_plot, outdir=outdir,
-            output_files=output_files, fieldcenters=fieldcenters,
-            cat_params=cat_params, obs_date=obs_date,
+        obs.schedule_targets(args.tele_keys[i], args.plot, outdir=args.outdir,
+            output_files=args.output, fieldcenters=args.fieldcenter,
+            cat_params=args.cat_params, obs_date=args.date,
             start_time=args.start, end_time=args.end,
-            first=first, second=second,
+            first=args.first, second=args.second,
             minimize_slew=args.minimize_slew)
 
 if __name__ == "__main__": main()

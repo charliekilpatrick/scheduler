@@ -20,23 +20,19 @@ date=options.date
 telescope=options.telescope
 
 if telescope=='Swope':
-	schedule=np.loadtxt('LCO_Swope_{0}_GoodSchedule.csv'.format(date),delimiter=',',unpack=True,usecols=0,skiprows=1,
+    schedule=np.loadtxt('LCO_Swope_{0}_GoodSchedule.csv'.format(date),delimiter=',',unpack=True,usecols=0,skiprows=1,
                      dtype=str)
 elif telescope=='Thacher':
-	schedule=np.loadtxt('Thacher_Thacher_{0}_GoodSchedule.csv'.format(date),delimiter=',',unpack=True,usecols=0,skiprows=1,
+    schedule=np.loadtxt('Thacher_Thacher_{0}_GoodSchedule.csv'.format(date),delimiter=',',unpack=True,usecols=0,skiprows=1,
                      dtype=str)
 
 elif telescope=='Nickel':
-	schedule=np.loadtxt('Lick_Nickel_{0}_GoodSchedule.csv'.format(date),delimiter=',',unpack=True,usecols=0,skiprows=1,
+    schedule=np.loadtxt('Lick_Nickel_{0}_GoodSchedule.csv'.format(date),delimiter=',',unpack=True,usecols=0,skiprows=1,
                      dtype=str)
 
 elif telescope=='Keck':
   schedule=np.loadtxt('Keck_Keck_{0}_GoodSchedule.csv'.format(date),delimiter=',',unpack=True,usecols=0,skiprows=1,
                      dtype=str)
-
-# print (len(schedule))
-
-
 
 scheduled_tiles=[]
 for i in schedule:
@@ -46,8 +42,6 @@ for i in schedule:
 
 print ("Number of tiles scheduled: ",len(scheduled_tiles))
 
-# infile=options.tiles_file
-
 tiles_file=ascii.read('{0}'.format(options.tiles_file),data_start=0, delimiter=',')
 
 
@@ -56,15 +50,11 @@ ps=[]
 for name in scheduled_tiles:
     for j,val in enumerate(tiles_file['FieldName']):
         if name==val:
-            # print (name)
-#             print tiles_file['Priority'][j]
             coincidence.append(name)
             ps.append(tiles_file['Priority'][j])
 
 print ("Coincidence", len(coincidence), "(must be equal to number above): it's # overlapping tiles between original tiles file and scheduled tiles)")
-# print (ps)
 print("Sum of Priorities: ", np.sum(ps))
-
 print("Probability: ", 100*np.sum(ps))
 
 

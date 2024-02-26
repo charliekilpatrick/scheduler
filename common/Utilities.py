@@ -207,10 +207,10 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
             if 'a_lambda' in data_table.keys():
                 # Adjust the magnitudes to account for a_lambda
                 new_row['mag'] = new_row['mag'] + row['a_lambda']
-        elif newfirm:
-            new_row['type'] = 'NEWFIRM'
         elif 'type' in row.colnames:
             new_row['type'] = row['type']
+        elif newfirm:
+            new_row['type'] = 'NEWFIRM'
         else:
             new_row['type'] = 'SN'
 

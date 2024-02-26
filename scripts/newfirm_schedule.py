@@ -18,6 +18,8 @@ def add_options(parser=None):
         help='Compress output of NEWFIRM directory into a tarball.')
     parser.add_argument('--finders', default=False, action='store_true',
         help='Make finder charts from target file in NEWFIRM output dir.')
+    parser.add_argument('--supernova-targets', default=None, type=str,
+        help='Add file with supernova targets to list of input targets.')
 
     options = parser.parse_args()
 
@@ -34,6 +36,10 @@ def main():
 
     cmd = 'python CreateSchedule.py '
     cmd += f'-f {ndir}/targlists/newfirm_good_templates_{datestr}.ecsv '
+    if options.supernova_targets:
+        if os.path.exists(options.supernova_targets):
+            print(f'Adding {options.supernova_targets}')
+            cmd += f' {options.supernova_targets} '
     cmd += f'--date {options.date} --newfirm --minimize-slew '
     cmd += f'--outdir {ndir}/obsplans --obstele CTIO:Blanco '
 

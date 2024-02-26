@@ -8,6 +8,7 @@ from common.observatory_defs import observatories
 # Other dependencies
 from dateutil.parser import parse
 from astropy.coordinates import SkyCoord
+from astropy.table import vstack
 from astropy.time import Time
 from astropy import units as unit
 import os

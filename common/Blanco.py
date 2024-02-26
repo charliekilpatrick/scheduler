@@ -18,11 +18,6 @@ class Blanco(common.Telescope.Telescope):
 
         #change as of Jun 4 after mirror cleaning
         self.filters = {
-            C.u_band:15.05285437,
-            C.g_band:16.4313935,
-            C.r_band:16.43413935,
-            C.i_band:15.86755865,
-            C.z_band:15.4,
             C.J_band:15.0,
             C.H_band:15.0,
             C.K_band:15.0,
@@ -44,78 +39,19 @@ class Blanco(common.Telescope.Telescope):
 
     def compute_sn_exposure(self, sn):
         exposures = {}
-
-        # Compute the current guess at apparent magnitude
-        days_from_disc = (sn.obs_date - sn.disc_date).jd
-        mag_reduction = days_from_disc*0.03
-        adj_app_mag = sn.apparent_mag + mag_reduction
-        fmt = "days: %0.3f, mag red: %0.3f, adj mag: %0.3f"
-        print(fmt % (days_from_disc, mag_reduction, adj_app_mag))
-
-        # Change S/N depending on phase...
-        s_to_n = 30. # base signal to noise
-
-        g_exp = self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.g_band])
-        r_exp = self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.r_band])
-        i_exp = self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.i_band])
-        V_exp = self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.V_band])
-
-        # Specific to Swope -- make Vgri the same length exposure...
-        mean_exp = np.mean([V_exp,g_exp,r_exp,i_exp])
-        mean_exp = self.round_to_num(C.round_to, mean_exp)
-
-        exposures.update({C.g_band: mean_exp})
-        exposures.update({C.r_band: mean_exp})
-        exposures.update({C.i_band: mean_exp})
-
-        u_exp = self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.u_band]))
-        B_exp = self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.B_band]))
-
-        # print (B_exp)
-
-        if (mean_exp <= 540):
-            print("Target Name: %s; u_exp: %s, mean_exp: %s" % (sn.name, u_exp, mean_exp))
-            exposures.update({C.B_band: B_exp})
-            exposures.update({C.V_band: mean_exp})
-
-        if (mean_exp <= 300):
-            exposures.update({C.u_band: u_exp})
-
-        # Finally, adjust exposures
-        for key, value in exposures.items():
-            if exposures[key] < 45:
-                exposures[key] = 45
-            elif exposures[key] > 600:
-                exposures[key] = 600
+        exposures.update({C.J_band: 80})
+        exposures.update({C.H_band: 80})
+        exposures.update({C.K_band: 80})
 
         sn.exposures = exposures
 
     def compute_standard_exposure(self, std):
         exposures = {}
-        s_to_n = 100
-
-        # Don't know what the apparent mag should be?
-        exposures.update({C.u_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.u_band]))})
-        exposures.update({C.g_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.g_band]))})
-        exposures.update({C.r_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.r_band]))})
-        exposures.update({C.i_band: self.round_to_num(C.round_to, self.time_to_S_N(s_to_n, std.apparent_mag, self.filters[C.i_band]))})
-
-        # Finally, for standards round exps and don't go less than 10s, don't go more than 600s on Swope
-        # Round to nearest "exp_round_to" secs
-        for key, value in exposures.items():
-            if exposures[key] < 10:
-                exposures[key] = 10
-            elif exposures[key] > 600:
-                exposures[key] = 600
 
         std.exposures = exposures
 
     def compute_template_exposure(self, tmp):
         exposures = {}
-        exposures.update({C.u_band: 1800})
-        exposures.update({C.g_band: 1200})
-        exposures.update({C.r_band: 1200})
-        exposures.update({C.i_band: 1200})
 
         tmp.exposures = exposures
 
@@ -125,7 +61,7 @@ class Blanco(common.Telescope.Telescope):
 
         tmp.exposures = exposures
 
-    def compute_gw_exposure(self, gw, s_n=5, filts=[C.r_band]):
+    def compute_gw_exposure(self, gw, s_n=5, filts=[C.H_band]):
         exposures = {}
 
         # Compute gw exposure
@@ -202,6 +138,102 @@ class Blanco(common.Telescope.Telescope):
 
         return(name)
 
+    def get_relative_focus(self, currfilt, to_filt):
+
+        if currfilt=='J' and to_filt=='J':
+            return('NONE')
+        elif currfilt=='J' and to_filt=='H':
+            return('100')
+        elif currfilt=='J' and to_filt=='Ks':
+            return('220')
+        elif currfilt=='H' and to_filt=='J':
+            return('-100')
+        elif currfilt=='H' and to_filt=='H':
+            return('NONE')
+        elif currfilt=='H' and to_filt=='Ks':
+            return('120')
+        elif currfilt=='Ks' and to_filt=='J':
+            return('-220')
+        elif currfilt=='Ks' and to_filt=='H':
+            return('-100')
+        elif currfilt=='Ks' and to_filt=='Ks':
+            return('NONE')
+
+    def make_survey_sequence(self, file, name, currfilt='J'):
+
+        focus = self.get_relative_focus(currfilt, 'J')
+
+        file.write(f'repeats\tfowler\tcoadds\texp.time\tfiltername\toffsRA\toffsDEC\tfocus\tobject\n')
+        file.write(f'1\t1\t4\t   5.000\tJX       \t-75.00\t0.00\t{focus}\t{name}\n')
+        file.write(f'1\t1\t4\t   5.000\tJX       \t0.00\t75.00\tNONE\t{name}\n')
+        file.write(f'1\t1\t4\t   5.000\tJX       \t75.00\t0.00\tNONE\t{name}\n')
+        file.write(f'1\t1\t4\t   5.000\tJX       \t0.00\t-75.00\tNONE\t{name}\n')
+
+        return(file, 'J')
+
+    def make_supernova_sequence(self, file, name, exptime_per_filt=80.0,
+        filts=['J','H','Ks'], currfilt='J'):
+
+        exptime = exptime_per_filt/16.0
+        first_filter = True
+
+        file.write(f'repeats\tfowler\tcoadds\texp.time\tfiltername\toffsRA\toffsDEC\tfocus\tobject\n')
+
+        if 'J' in filts:
+            focus = self.get_relative_focus(currfilt, 'J')
+            currfilt = 'J'
+
+            if first_filter:
+                offRA='450.00'
+                offDec='450.00'
+                first_filter = False
+            else:
+                offRA='-75.00'
+                offDec='0.00'
+
+            file.write(f'1\t1\t4\t   {exptime}\tJX       \t{offRA}\t{offDec}\t{focus}\t{name}\n')
+            file.write(f'1\t1\t4\t   {exptime}\tJX       \t0.00\t75.00\tNONE\t{name}\n')
+            file.write(f'1\t1\t4\t   {exptime}\tJX       \t75.00\t0.00\tNONE\t{name}\n')
+            file.write(f'1\t1\t4\t   {exptime}\tJX       \t0.00\t-75.00\tNONE\t{name}\n')
+
+        if 'H' in  filts:
+
+            focus = self.get_relative_focus(currfilt, 'H')
+            currfilt = 'H'
+
+            if first_filter:
+                offRA='450.00'
+                offDec='450.00'
+                first_filter = False
+            else:
+                offRA='-75.00'
+                offDec='0.00'
+
+            file.write(f'1\t1\t4\t   {exptime}\tHX       \t{offRA}\t{offDec}\t{focus}\t{name}\n')
+            file.write(f'1\t1\t4\t   {exptime}\tHX       \t0.00\t75.00\tNONE\t{name}\n')
+            file.write(f'1\t1\t4\t   {exptime}\tHX       \t75.00\t0.00\tNONE\t{name}\n')
+            file.write(f'1\t1\t4\t   {exptime}\tHX       \t0.00\t-75.00\tNONE\t{name}\n')
+
+        if 'Ks' in  filts:
+
+            focus = self.get_relative_focus(currfilt, 'Ks')
+            currfilt = 'Ks'
+
+            if first_filter:
+                offRA='450.00'
+                offDec='450.00'
+                first_filter = False
+            else:
+                offRA='-75.00'
+                offDec='0.00'
+
+            file.write(f'1\t1\t4\t   {exptime}\tKXs       \t{offRA}\t{offDec}\t{focus}\t{name}\n')
+            file.write(f'1\t1\t4\t   {exptime}\tKXs       \t0.00\t75.00\tNONE\t{name}\n')
+            file.write(f'1\t1\t4\t   {exptime}\tKXs       \t75.00\t0.00\tNONE\t{name}\n')
+            file.write(f'1\t1\t4\t   {exptime}\tKXs       \t0.00\t-75.00\tNONE\t{name}\n')
+
+        return(file, currfilt)
+
     def write_schedule(self, observatory_name, obs_date, targets, outdir=None,
         output_files=None, fieldcenters=None, pointing=None, 
         newfirm_dir='newfirm', obs_subdir='scripts', batch_size=10):
@@ -232,6 +264,9 @@ class Blanco(common.Telescope.Telescope):
         curr_script = self.initialize_obsfile(curr_script_num, 
             outdir=os.path.join(outdir, newfirm_dir), subdir=obs_subdir)
 
+        # Assume that we start in J-band
+        currfilt = 'J'
+
         for i,t in enumerate(targets):
             ra = t.coord.ra.hms
             dec = t.coord.dec.dms
@@ -250,12 +285,13 @@ class Blanco(common.Telescope.Telescope):
                 obs_sequence_file)
             obs_sequence = open(fullobsfile, 'w')
 
-            if t.exposures[C.J_band]==80.0:
-                obs_sequence.write(f'repeats\tfowler\tcoadds\texp.time\tfiltername\toffsRA\toffsDEC\tfocus\tobject\n')
-                obs_sequence.write(f'1\t1\t4\t   5.000\tJX       \t-75.00\t0.00\tNONE\t{t.name}\n')
-                obs_sequence.write(f'1\t1\t4\t   5.000\tJX       \t0.00\t75.00\tNONE\t{t.name}\n')
-                obs_sequence.write(f'1\t1\t4\t   5.000\tJX       \t75.00\t0.00\tNONE\t{t.name}\n')
-                obs_sequence.write(f'1\t1\t4\t   5.000\tJX       \t0.00\t-75.00\tNONE\t{t.name}\n')
+            if t.type==TargetType.NEWFIRM:
+                obs_sequence, currfilt = self.make_survey_sequence(
+                    obs_sequence, t.name, currfilt=currfilt)
+            elif t.type==TargetType.Supernova:
+                obs_sequence, currfilt = self.make_supernova_sequence(
+                    obs_sequence, t.name, currfilt=currfilt, 
+                    exptime_per_filt=80.0, filts=['J','H','Ks'])
 
             obs_sequence.close()
 

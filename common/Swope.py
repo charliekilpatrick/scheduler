@@ -173,8 +173,8 @@ class Swope(common.Telescope.Telescope):
 
         return filter_row
 
-    def write_schedule(self, observatory_name, obs_date, targets, output_files=None,
-        fieldcenters=None, pointing=None):
+    def write_schedule(self, observatory_name, obs_date, targets, outdir=None,
+        output_files=None, fieldcenters=None, pointing=None):
 
         if output_files:
             file_to_write = output_files + '.csv'
@@ -217,9 +217,7 @@ class Swope(common.Telescope.Telescope):
                     for i,filt in enumerate(t.exposures.keys()):
 
                         start_time='--'
-                        if i==0:
-                            start_time = t.utc_start_time.strftime('%Y-%m-%dT%H:%M:%S')
-
+                        
                         phot_line = '{name} {ra} {dec} {filt} '+\
                             '{exptime} {start_time} {m3sigma} \n'
 

@@ -61,7 +61,7 @@ class Blanco(common.Telescope.Telescope):
 
         tmp.exposures = exposures
 
-    def compute_gw_exposure(self, gw, s_n=5, filts=[C.H_band]):
+    def compute_gw_exposure(self, gw, s_n=5, filts=[C.J_band]):
         exposures = {}
 
         # Compute gw exposure
@@ -122,6 +122,7 @@ class Blanco(common.Telescope.Telescope):
         file.write(f'PAN set obs.observer \"{observer}\" \n')
         file.write(f'PAN set obs.propid \"{propid}\" \n')
         file.write(f'PAN set image.comment \"{comment}\" \n')
+        file.write(f'PAN set image.basename obj \n')
 
         return(file)
 
@@ -292,6 +293,10 @@ class Blanco(common.Telescope.Telescope):
                 obs_sequence, currfilt = self.make_supernova_sequence(
                     obs_sequence, t.name, currfilt=currfilt, 
                     exptime_per_filt=80.0, filts=['J','H','Ks'])
+            elif t.type==TargetType.GW:
+                obs_sequence, currfilt = self.make_supernova_sequence(
+                    obs_sequence, t.name, currfilt=currfilt, 
+                    exptime_per_filt=80.0, filts=['J'])
 
             obs_sequence.close()
 

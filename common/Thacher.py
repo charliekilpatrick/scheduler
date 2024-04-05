@@ -302,13 +302,13 @@ class Thacher(common.Telescope.Telescope):
                      'Target', 'count', 'interval', 'autofocus',
                      'Coordinates', 'RightAscension', 'Declination',
                      'Picture', 'ExposureTime', 'Binning', 'Filter']
-        Utilities.dicttoxml(f, xml_header, depth = 0, name_name='name', 
+        common.Utilities.dicttoxml(f, xml_header, depth = 0, name_name='name', 
             order=order)
 
         f.close()
 
-    def write_schedule(self, observatory_name, obs_date, targets, output_files=None,
-        fieldcenters=None, pointing=None):
+    def write_schedule(self, observatory_name, obs_date, targets, outdir=None,
+        output_files=None, fieldcenters=None, pointing=None):
 
         if not output_files:
             output_files = "%s_%s_Schedule" % (self.name, obs_date.strftime('%Y%m%d'))

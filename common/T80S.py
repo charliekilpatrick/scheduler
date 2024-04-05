@@ -153,8 +153,8 @@ class T80S(common.Telescope.Telescope):
 
         return filter_row
 
-    def write_schedule(self, observatory_name, obs_date, targets, output_files=None,
-        fieldcenters=None, pointing=None):
+    def write_schedule(self, observatory_name, obs_date, targets, outdir=None,
+        output_files=None, fieldcenters=None, pointing=None):
 
         if output_files:
             file_to_write = output_files + '.csv'

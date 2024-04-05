@@ -161,14 +161,14 @@ class Nickel(common.Telescope.Telescope):
             'NICKEL_TEMPLATE_SHEET' in os.environ.keys() and
             'NICKEL_OBSERVERS_SHEET' in os.environ.keys()):
 
-            params = Logs.gsheets_params(os.environ['NICKEL_SCHEDULE_SHEET'], 
+            params = common.Logs.gsheets_params(os.environ['NICKEL_SCHEDULE_SHEET'], 
                 os.environ['NICKEL_TEMPLATE_SHEET'], 
                 os.environ['GSHEETS_TOKEN'],
                 observers_sheet=os.environ['NICKEL_OBSERVERS_SHEET'])
 
-            sheet = Logs.initiate_gsheet(params['gsheets_token'])
+            sheet = common.Logs.initiate_gsheet(params['gsheets_token'])
             if not is_gw:
-                (observer, night) = Logs.check_if_tel_on_date(sheet, 
+                (observer, night) = common.Logs.check_if_tel_on_date(sheet, 
                     params['OBSERVERS_SHEET'], parse(obs_date.strftime('%Y%m%d')))
                 tab_name = obs_date.strftime('%Y%m%d')
                 if night==0: night = 1
@@ -178,7 +178,7 @@ class Nickel(common.Telescope.Telescope):
                 tab_name = obs_date.strftime('%Y%m%d')+'gw'
 
             # Make an empty Nickel log
-            success = Logs.copy_log(sheet, params['TEMPLATE'], 'Nickel Log',
+            success = common.Logs.copy_log(sheet, params['TEMPLATE'], 'Nickel Log',
                 params['CURRENT_SHEET'], tab_name)
 
         else:
@@ -211,7 +211,7 @@ class Nickel(common.Telescope.Telescope):
             print('Adding schedule to Google sheet under:',obs_date.strftime('%Y%m%d'))
             print('Observer for tonight is:',observer)
             if log_success:
-                Logs.populate_nickel_log(sheet, params['CURRENT_SHEET'], tab_name, 
+                common.Logs.populate_nickel_log(sheet, params['CURRENT_SHEET'], tab_name, 
                     output_rows, date=obs_date.strftime('%Y/%m/%d'), 
                     observer=observer, start_number=str(night * 1000 + 1))
 

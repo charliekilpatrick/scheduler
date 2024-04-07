@@ -174,7 +174,7 @@ class Swope(common.Telescope.Telescope):
         return filter_row
 
     def write_schedule(self, observatory_name, obs_date, targets, outdir=None,
-        output_files=None, fieldcenters=None, pointing=None):
+        output_files=None, fieldcenters=None, pointing=None, **kwargs):
 
         if output_files:
             file_to_write = output_files + '.csv'

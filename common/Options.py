@@ -79,6 +79,8 @@ def add_options():
         help="Minimize slew time between targets while creating schedule.")
     parser.add_argument("--newfirm-dir", default='newfirm', type=str,
         help="Output directory for NEWFIRM observing scripts.")
+    parser.add_argument("--one-off", default=False, action="store_true",
+        help="For NEWFIRM supernova observations, serialize them individually.")
     
     args = parser.parse_args()
 

@@ -42,6 +42,7 @@ def main():
             cmd += f' {options.supernova_targets} '
     cmd += f'--date {options.date} --newfirm --minimize-slew '
     cmd += f'--outdir {ndir}/obsplans --obstele CTIO:Blanco '
+    cmd += '--one-off '
 
     if options.first:
         cmd += '--first'

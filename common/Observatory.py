@@ -387,7 +387,7 @@ class Observatory():
     def schedule_targets(self, telescope_name, preview_plot=False,
         output_files=None, fieldcenters=None, cat_params={}, obs_date=None,
         start_time=None, end_time=None, minimize_slew=False, outdir=None,
-        first=False, second=False):
+        first=False, second=False, one_off=False):
 
         # Update internal Target list with priorities and exposures
         telescope = self.telescopes[telescope_name]
@@ -553,4 +553,4 @@ class Observatory():
 
         telescope.write_schedule(self.name, date, o, outdir=outdir,
             output_files=output_files, fieldcenters=fieldcenters, 
-            pointing=self.pointing)
+            pointing=self.pointing, one_off=one_off)

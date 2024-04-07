@@ -113,10 +113,14 @@ class Blanco(common.Telescope.Telescope):
 
     def initialize_obsfile(self, num, outdir='newfirm', subdir='scripts',
         observer='Charlie Kilpatrick', propid='2024A-937812',
-        comment='Survey Field for NEWFIRM Infrared Survey for Transients'):
+        comment='Survey Field for NEWFIRM Infrared Survey for Transients',
+        filename=None):
 
         num_str = str(num).zfill(3)
-        filename = os.path.join(outdir, f'newfirm_sequence_{num_str}')
+        if filename is not None:
+            filename = os.path.join(outdir, filename)
+        else:
+            filename = os.path.join(outdir, f'newfirm_sequence_{num_str}')
         file = open(filename,'w')
 
         file.write(f'PAN set obs.observer \"{observer}\" \n')
@@ -237,7 +241,8 @@ class Blanco(common.Telescope.Telescope):
 
     def write_schedule(self, observatory_name, obs_date, targets, outdir=None,
         output_files=None, fieldcenters=None, pointing=None, 
-        newfirm_dir='newfirm', obs_subdir='scripts', batch_size=10):
+        newfirm_dir='newfirm', obs_subdir='scripts', batch_size=10,
+        one_off=False):
 
         if outdir is None:
             outdir = '.'
@@ -269,6 +274,12 @@ class Blanco(common.Telescope.Telescope):
         currfilt = 'J'
 
         for i,t in enumerate(targets):
+            if one_off and t.type==TargetType.Supernova:
+                curr_script.close()
+                curr_script = self.initialize_obsfile(curr_script_num, 
+                    outdir=os.path.join(outdir, newfirm_dir), subdir=obs_subdir,
+                    filename=t.name)
+
             ra = t.coord.ra.hms
             dec = t.coord.dec.dms
 
@@ -302,7 +313,8 @@ class Blanco(common.Telescope.Telescope):
 
             curr_script.write(f'seqrun.py -run {obs_sequence_file} \n')
 
-            if (i+1)%batch_size==0 and i+1 < len(targets):
+            if ((i+1)%batch_size==0 and i+1 < len(targets) or
+                (one_off and t.type==TargetType.Supernova)):
                 curr_script.close()
                 curr_script_num += 1 
                 curr_script = self.initialize_obsfile(curr_script_num, 

@@ -308,7 +308,7 @@ class Thacher(common.Telescope.Telescope):
         f.close()
 
     def write_schedule(self, observatory_name, obs_date, targets, outdir=None,
-        output_files=None, fieldcenters=None, pointing=None):
+        output_files=None, fieldcenters=None, pointing=None, **kwargs):
 
         if not output_files:
             output_files = "%s_%s_Schedule" % (self.name, obs_date.strftime('%Y%m%d'))

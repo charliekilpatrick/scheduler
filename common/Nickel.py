@@ -192,7 +192,7 @@ class Nickel(common.Telescope.Telescope):
         return(success, observer, params, tab_name, night, sheet)
 
     def write_schedule(self, observatory_name, obs_date, targets, outdir=None,
-        output_files=None, fieldcenters=None, pointing=None):
+        output_files=None, fieldcenters=None, pointing=None, **kwargs):
 
         is_gw = all([t.type is TargetType.GW for t in targets])
 

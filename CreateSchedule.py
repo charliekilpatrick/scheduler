@@ -81,7 +81,8 @@ def main():
             cat_params=args.cat_params, obs_date=args.date,
             start_time=args.start, end_time=args.end,
             first=args.first, second=args.second,
-            minimize_slew=args.minimize_slew)
+            minimize_slew=args.minimize_slew,
+            one_off=args.one_off)
 
 if __name__ == "__main__": main()
 

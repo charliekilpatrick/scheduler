@@ -62,14 +62,13 @@ class Blanco(common.Telescope.Telescope):
         tmp.exposures = exposures
 
     def compute_gw_exposure(self, gw, s_n=5, filts=[C.J_band]):
-        exposures = {}
+        exposures = {C.J_band: 80}
 
         # Compute gw exposure
-        for filt in filts:
-            exp = self.time_to_S_N(s_n, gw.apparent_mag, self.filters[filt])
-            mean_exp = self.round_to_num(C.round_to, exp)
-
-            exposures.update({filt: mean_exp})
+        #for filt in filts:
+        #    exp = self.time_to_S_N(s_n, gw.apparent_mag, self.filters[filt])
+        #    mean_exp = self.round_to_num(C.round_to, exp)
+        #    exposures.update({filt: mean_exp})
 
         gw.exposures = exposures
 
@@ -121,6 +120,7 @@ class Blanco(common.Telescope.Telescope):
             filename = os.path.join(outdir, filename)
         else:
             filename = os.path.join(outdir, f'newfirm_sequence_{num_str}')
+        print(f'Writing out to: {filename}')
         file = open(filename,'w')
 
         file.write(f'PAN set obs.observer \"{observer}\" \n')
@@ -259,10 +259,12 @@ class Blanco(common.Telescope.Telescope):
 
         if output_files:
             photfilename = os.path.join(outdir, newfirm_dir, f'{output_files}.txt')
+            print(f'Writing out to: {photfilename}')
             phot = open(photfilename, 'w')
         else:
             photfilename = f"newfirm_schedule_{obs_date_str}.txt"
             photfilename = os.path.join(outdir, newfirm_dir, photfilename)
+            print(f'Writing out to: {photfilename}')
             phot = open(photfilename, 'w')
 
         num_scripts = int(np.ceil(float(len(targets))/batch_size))
@@ -295,6 +297,7 @@ class Blanco(common.Telescope.Telescope):
             obs_sequence_file = f'{t.name}_sequence.obs'
             fullobsfile = os.path.join(outdir, newfirm_dir, obs_subdir, 
                 obs_sequence_file)
+            print(f'Writing out to: {fullobsfile}')
             obs_sequence = open(fullobsfile, 'w')
 
             if t.type==TargetType.NEWFIRM:

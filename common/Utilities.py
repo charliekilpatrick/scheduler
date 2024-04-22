@@ -106,7 +106,8 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
     # Sanitize columns
     for key in data_table.keys():
         newkey = key.lower().replace(' ','_')
-        data_table.rename_column(key, newkey)
+        if key!=newkey and newkey not in data_table.keys():
+            data_table.rename_column(key, newkey)
 
     for key in data_table.keys():
         if 'name' in key and 'name' not in data_table.keys():
@@ -125,7 +126,7 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
             data_table.rename_column(key, 'dec')
         if key in ['fieldname','object','field_name']:
             data_table.rename_column(key, 'name')
-        if key in ['prob']:
+        if key in ['percentile']:
             data_table.rename_column(key, 'priority')
         if key in ['recent_mag']:
             data_table.rename_column(key, 'mag')

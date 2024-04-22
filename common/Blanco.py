@@ -117,9 +117,11 @@ class Blanco(common.Telescope.Telescope):
 
         num_str = str(num).zfill(3)
         if filename is not None:
-            filename = os.path.join(outdir, filename)
+            filename = os.path.abspath(os.path.join(outdir, filename))
         else:
-            filename = os.path.join(outdir, f'newfirm_sequence_{num_str}')
+            filename = os.path.abspath(
+                os.path.join(outdir, f'newfirm_sequence_{num_str}')
+            )
         print(f'Writing out to: {filename}')
         file = open(filename,'w')
 
@@ -258,12 +260,16 @@ class Blanco(common.Telescope.Telescope):
             os.makedirs(os.path.join(outdir, newfirm_dir, obs_subdir))
 
         if output_files:
-            photfilename = os.path.join(outdir, newfirm_dir, f'{output_files}.txt')
+            photfilename = os.path.abspath(
+                os.path.join(outdir, newfirm_dir, f'{output_files}.txt')
+            )
             print(f'Writing out to: {photfilename}')
             phot = open(photfilename, 'w')
         else:
             photfilename = f"newfirm_schedule_{obs_date_str}.txt"
-            photfilename = os.path.join(outdir, newfirm_dir, photfilename)
+            photfilename = os.path.abspath(
+                os.path.join(outdir, newfirm_dir, photfilename)
+            )
             print(f'Writing out to: {photfilename}')
             phot = open(photfilename, 'w')
 
@@ -295,8 +301,10 @@ class Blanco(common.Telescope.Telescope):
             curr_script.write(f'TCS slew {ra_hms} {dec_dms} \n')
 
             obs_sequence_file = f'{t.name}_sequence.obs'
-            fullobsfile = os.path.join(outdir, newfirm_dir, obs_subdir, 
-                obs_sequence_file)
+            fullobsfile = os.path.abspath(
+                os.path.join(outdir, newfirm_dir, obs_subdir, obs_sequence_file)
+            )
+
             print(f'Writing out to: {fullobsfile}')
             obs_sequence = open(fullobsfile, 'w')
 

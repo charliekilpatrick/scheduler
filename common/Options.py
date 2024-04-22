@@ -97,9 +97,9 @@ def handle_options():
 
     # Check for conflicts between options
     if args.obstele is None:
-        raise Exception(f'ERROR: --obstele cannot be None')
+        raise Exception('ERROR: --obstele cannot be None')
     if args.first and args.second:
-        raise Exception(f'ERROR: cannot pass both --first and --second.')
+        raise Exception('ERROR: cannot pass both --first and --second.')
 
     if args.first or args.second: args.start = None ; args.end = None
     

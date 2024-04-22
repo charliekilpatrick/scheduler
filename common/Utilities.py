@@ -103,9 +103,6 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
 
     data_table = ascii.read(file_name)
 
-    print(data_table)
-    print(data_table.keys())
-
     # Sanitize columns
     for key in data_table.keys():
         newkey = key.lower().replace(' ','_')
@@ -134,9 +131,6 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
         if key in ['recent_mag']:
             data_table.rename_column(key, 'mag')
 
-    print(data_table)
-    print(data_table.keys())
-
     if 'filter' in data_table.keys():
         mask = np.array([r['filter'] in ['r-ZTF','g-ZTF','r','i','B','V','g',
                 'z','J','H','Ks'] for r in data_table])
@@ -155,16 +149,10 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
 
         data_table = copy.copy(newtable)
 
-    print(data_table)
-    print(data_table.keys())
-
     if 'priority' in data_table.keys():
         # Add the original priority to the table as a new column
         data_table.add_column(Column(data_table['priority'], 
             name='orig_priority'))
-
-    print(data_table)
-    print(data_table.keys())
 
     if 'priority' not in data_table.keys():
         # Add targets one by one from
@@ -248,10 +236,6 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
     if 'orig_priority' not in table.keys():
         opri_col = Column([None]*len(table), name='orig_priority')
         table.add_column(opri_col)
-
-    print(data_table)
-    print(data_table.keys())
-    sys.exit()
 
     return(table)
 

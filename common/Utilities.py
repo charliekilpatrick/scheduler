@@ -103,6 +103,9 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
 
     data_table = ascii.read(file_name)
 
+    print(data_table)
+    print(data_table.keys())
+
     # Sanitize columns
     for key in data_table.keys():
         newkey = key.lower().replace(' ','_')
@@ -118,6 +121,9 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
 
     # Only want to schedule each target once, so get rid of non-unique names
     data_table = unique(data_table, keys='name')
+
+    print(data_table)
+    print(data_table.keys())
 
     for key in data_table.keys():
         if key in ['fieldra','r.a.','right_ascension']:
@@ -148,11 +154,15 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
             newtable.add_row(subtable[idx])
 
         data_table = copy.copy(newtable)
+    print(data_table)
+    print(data_table.keys())
 
     if 'priority' in data_table.keys():
         # Add the original priority to the table as a new column
         data_table.add_column(Column(data_table['priority'], 
             name='orig_priority'))
+    print(data_table)
+    print(data_table.keys())
 
     if 'priority' not in data_table.keys():
         # Add targets one by one from
@@ -236,6 +246,10 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
     if 'orig_priority' not in table.keys():
         opri_col = Column([None]*len(table), name='orig_priority')
         table.add_column(opri_col)
+
+    print(data_table)
+    print(data_table.keys())
+    sys.exit()
 
     return(table)
 

@@ -24,6 +24,7 @@ def get_target_data(args):
             targ_data = Utilities.get_targets(file, gw=args.gw, 
                 target_mag=args.target_mag, username=args.username, 
                 password=args.password, newfirm=args.newfirm)
+            print(targ_data)
             if target_data is None:
                 target_data = targ_data
             else:
@@ -72,7 +73,7 @@ def main():
             )
             print(target['orig_priority'])
 
-        sys.exit()
+            sys.exit()
 
         obs.telescopes[args.tele_keys[i]].set_targets(targets)
 

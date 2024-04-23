@@ -41,7 +41,7 @@ class Target:
         self.coord = coord
         # If the target has a re-calculated priority, store the original value
         # as a separate quantity
-        self.orig_priority = None
+        self.orig_priority = orig_priority
         self.priority = priority
         self.type = target_type
         # This is a reference date when the apparent magnitude applies

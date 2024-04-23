@@ -40,6 +40,7 @@ def get_target_data(args):
         print(error)
         sys.exit(1)
 
+    print(target_data)
     return(target_data)
 
 def main():

@@ -151,6 +151,8 @@ class Telescope(metaclass=ABCMeta):
 
         with open(out_phot_file, 'w') as phot:
 
+            phot.write('name ra dec filter exptime m3sigma priority \n')
+            
             for t in targets:
 
                 name = t.name
@@ -165,6 +167,7 @@ class Telescope(metaclass=ABCMeta):
                     priority = t.orig_priority
 
                     phot_line = f'{name} {ra} {dec} {filt} {exptime} {m3sigma} {priority} \n'
+                    print(priority)
 
                     phot.write(phot_line)
 

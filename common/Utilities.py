@@ -123,7 +123,7 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
     for key in data_table.keys():
         if key in ['fieldra','r.a.','right_ascension']:
             data_table.rename_column(key, 'ra')
-        if key in ['fielddec','declination','dec.']:
+        if key in ['fielddec','declination','dec.','_dec']:
             data_table.rename_column(key, 'dec')
         if key in ['fieldname','object','field_name','objname']:
             data_table.rename_column(key, 'name')

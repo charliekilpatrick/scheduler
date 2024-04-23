@@ -104,9 +104,6 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
 
     data_table = ascii.read(file_name)
 
-    print(data_table)
-    print(data_table.keys())
-
     # Sanitize columns
     for key in data_table.keys():
         newkey = key.lower().replace(' ','_')
@@ -241,8 +238,6 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
     if 'orig_priority' not in table.keys():
         opri_col = Column([None]*len(table), name='orig_priority')
         table.add_column(opri_col)
-
-    print(table)
 
     return(table)
 

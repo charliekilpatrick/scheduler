@@ -41,7 +41,6 @@ def get_target_data(args):
         print(error)
         sys.exit(1)
 
-    print(target_data)
     return(target_data)
 
 def main():
@@ -71,9 +70,6 @@ def main():
                     orig_priority=target['orig_priority']
                 )
             )
-            print(target['orig_priority'])
-
-            sys.exit()
 
         obs.telescopes[args.tele_keys[i]].set_targets(targets)
 

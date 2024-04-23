@@ -28,6 +28,9 @@ class Telescope(metaclass=ABCMeta):
     def set_base_overhead(self, overhead):
         self.base_overhead = overhead
 
+    def set_fixed_exptime(self, exptime):
+        self.fixed_exptime = exptime
+
     def round_to_num(self, round_to_num, input_to_round):
         return int(round_to_num*round(float(input_to_round)/round_to_num))
 

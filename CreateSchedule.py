@@ -53,6 +53,13 @@ def main():
         obs.set_airmass_threshold(args.airmass_limit)
         obs.set_halimit_threshold(args.halimit)
 
+        # Set telescope parameters
+        for key in obs.telescopes.keys():
+            if args.fixed_overhead:
+                obs.telescopes[key].set_base_overhead(args.fixed_overhead)
+            if args.fixed_exptime:
+                obs.telescopes[key].set_fixed_exptime(args.fixed_exptime)
+
         targets = []
         for target in target_data:
 

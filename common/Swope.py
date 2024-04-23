@@ -202,7 +202,7 @@ class Swope(common.Telescope.Telescope):
             output_rows.append(header_row)
 
             if output_files:
-                phot.write('# name ra dec filter exptime start_time_utc m3sigma \n')
+                phot.write('name ra dec filter exptime m3sigma priority \n')
 
             last_filter = C.r_band
             for t in targets:
@@ -219,16 +219,17 @@ class Swope(common.Telescope.Telescope):
                         start_time='--'
                         
                         phot_line = '{name} {ra} {dec} {filt} '+\
-                            '{exptime} {start_time} {m3sigma} \n'
+                            '{exptime} {m3sigma} {priority} \n'
 
                         zeropoint = self.filters[filt]
                         exptime = t.exposures[filt]
                         m3sigma = self.limiting_magnitude(zeropoint, exptime, 3)
+                        priority = t.orig_priority
 
                         phot_line = phot_line.format(name=t.name, ra=ra_hms,
                             dec=dec_dms, filt=filt, exptime=exptime,
-                            start_time=start_time,
-                            m3sigma=m3sigma)
+                            m3sigma=m3sigma,
+                            priority=priority)
 
                         phot.write(phot_line)
 

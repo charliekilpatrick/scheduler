@@ -127,7 +127,7 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
             data_table.rename_column(key, 'dec')
         if key in ['fieldname','object','field_name','objname']:
             data_table.rename_column(key, 'name')
-        if key in ['percentile']:
+        if key in ['percentile','p_3d']:
             data_table.rename_column(key, 'priority')
         if key in ['recent_mag']:
             data_table.rename_column(key, 'mag')

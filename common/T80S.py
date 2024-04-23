@@ -188,18 +188,20 @@ class T80S(common.Telescope.Telescope):
                 dec_dms = hmsdms.split()[1]
 
                 if output_files:
+                    phot.write('name field ra dec filter exptime m3sigma priority \n')
                     for filt in t.exposures.keys():
 
                         phot_line = '{name} {name} {ra} {dec} {filt} '+\
-                            '{exptime} {m3sigma} \n'
+                            '{exptime} {m3sigma} {priority} \n'
 
                         zeropoint = self.filters[filt]
                         exptime = t.exposures[filt]
                         m3sigma = self.limiting_magnitude(zeropoint, exptime, 3)
+                        priority = t.orig_priority
 
                         phot_line = phot_line.format(name=t.name, ra=ra_hms,
                             dec=dec_dms, filt=filt, exptime=exptime,
-                            m3sigma=m3sigma)
+                            m3sigma=m3sigma, priority=priority)
 
                         phot.write(phot_line)
 

@@ -18,7 +18,8 @@ from astroquery.mast import Catalogs
 
 from requests.auth import HTTPBasicAuth
 
-target_table_names = ('name', 'ra', 'dec', 'priority', 'date', 'mag', 'type')
+target_table_names = ('name', 'ra', 'dec', 'priority', 'date', 'mag', 'type',
+    'orig_priority')
 target_table_row   = [['X' * 40], [0.], [0.], [0.0],
     [Time('2019-01-01T00:00:00')], [0.0], ['X' * 40]]
 max_length = 20000
@@ -229,8 +230,7 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
         new_row['ra'] = coord.ra.degree
         new_row['dec'] = coord.dec.degree
         new_row['name'] = row['name']
-        if 'orig_priority' in row.colnames:
-            new_row['orig_priority'] = row['orig_priority']
+        new_row['orig_priority'] = row['orig_priority']
         new_row['priority'] = row['priority']
 
         # Reprioritize by approximate priority

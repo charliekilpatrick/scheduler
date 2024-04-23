@@ -54,7 +54,7 @@ def add_options():
     # Options for constraining target selection during scheduling
     parser.add_argument("--halimit", default=None, type=float,
         help="Input hour angle limit for telescopes with limit.")
-    parser.add_argument("--airmass-limit", default=None, type=float,
+    parser.add_argument("--airmass-limit", default=3.0, type=float,
         help="Input airmass limit for targets.")
     
     # Options for using catalogs to select fields based on number of available

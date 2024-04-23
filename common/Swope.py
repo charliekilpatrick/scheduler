@@ -225,8 +225,9 @@ class Swope(common.Telescope.Telescope):
                         exptime = t.exposures[filt]
                         m3sigma = self.limiting_magnitude(zeropoint, exptime, 3)
                         priority = t.orig_priority
+                        name = t.name.replace(' ','')
 
-                        phot_line = phot_line.format(name=t.name, ra=ra_hms,
+                        phot_line = phot_line.format(name=name, ra=ra_hms,
                             dec=dec_dms, filt=filt, exptime=exptime,
                             m3sigma=m3sigma,
                             priority=priority)

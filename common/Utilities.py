@@ -21,7 +21,7 @@ from requests.auth import HTTPBasicAuth
 target_table_names = ('name', 'ra', 'dec', 'priority', 'date', 'mag', 'type',
     'orig_priority')
 target_table_row   = [['X' * 40], [0.], [0.], [0.0],
-    [Time('2019-01-01T00:00:00')], [0.0], ['X' * 40]]
+    [Time('2019-01-01T00:00:00')], [0.0], ['X' * 40], [0.]]
 max_length = 20000
 
 class UTC_Offset(tzinfo):

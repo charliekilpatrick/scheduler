@@ -250,7 +250,6 @@ def get_targets(file_name, gw=None, target_mag=-17.0, obstype='',
     print(data_table)
     print(data_table.keys())
     print(data_table['orig_priority'])
-    sys.exit()
 
     return(table)
 

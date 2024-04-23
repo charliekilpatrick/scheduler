@@ -25,6 +25,9 @@ class Telescope(metaclass=ABCMeta):
         output_files=None, fieldcenters=None, pointing=None):
         pass
 
+    def set_base_overhead(self, overhead):
+        self.base_overhead = overhead
+
     def round_to_num(self, round_to_num, input_to_round):
         return int(round_to_num*round(float(input_to_round)/round_to_num))
 

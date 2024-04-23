@@ -15,6 +15,8 @@ class T80S(common.Telescope.Telescope):
         self.targets = None
         self.name = "T80S"
 
+        self.fixed_exptime = None
+
         # Base overhead on observations (in seconds)
         self.base_overhead = 60.
 
@@ -160,6 +162,7 @@ class T80S(common.Telescope.Telescope):
             file_to_write = output_files + '.csv'
             phot_file_to_write = output_files + '.phot'
             phot = open(phot_file_to_write, 'w')
+            phot.write('name field ra dec filter exptime m3sigma priority \n')
         else:
             file_to_write = "%s_%s_Schedule.csv" % (self.name, obs_date.strftime('%Y%m%d'))
         if fieldcenters:
@@ -188,7 +191,6 @@ class T80S(common.Telescope.Telescope):
                 dec_dms = hmsdms.split()[1]
 
                 if output_files:
-                    phot.write('name field ra dec filter exptime m3sigma priority \n')
                     for filt in t.exposures.keys():
 
                         phot_line = '{name} {name} {ra} {dec} {filt} '+\

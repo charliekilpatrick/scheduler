@@ -15,6 +15,11 @@ class Swope(common.Telescope.Telescope):
         self.targets = None
         self.name = "Swope"
 
+        self.fixed_exptime = None
+
+        # Base overhead on observations (in seconds)
+        self.base_overhead = 60.
+
         #change as of Jun 4 after mirror cleaning
         self.filters = {
             C.u_band:15.05285437,
@@ -131,6 +136,9 @@ class Swope(common.Telescope.Telescope):
         i_exp = self.time_to_S_N(s_to_n, gw.apparent_mag, self.filters[C.i_band])
         mean_exp = self.round_to_num(C.round_to, i_exp)
 
+        if self.fixed_exptime:
+            mean_exp = self.fixed_exptime
+
         exposures.update({C.i_band: mean_exp})
 
         gw.exposures = exposures
@@ -146,7 +154,7 @@ class Swope(common.Telescope.Telescope):
                 self.exp_funcs[tgt.type](tgt) # Sets exposures for each target by target type
 
                 # per observatory - LCO Swope
-                fudge_factor = 120. if len(tgt.exposures) > 0 else 0 # Build in a fudge factor based on # of exps GW
+                fudge_factor = self.base_overhead if len(tgt.exposures) > 0 else 0 # Build in a fudge factor based on # of exps GW
 
                 total_minutes = (sum(tgt.exposures.values()) + fudge_factor)/60. # Sum total minutes
                 tgt.total_minutes = round(total_minutes * 60./C.round_to) * C.round_to/60.
@@ -176,118 +184,13 @@ class Swope(common.Telescope.Telescope):
     def write_schedule(self, observatory_name, obs_date, targets, outdir=None,
         output_files=None, fieldcenters=None, pointing=None, **kwargs):
 
-        if output_files:
-            file_to_write = output_files + '.csv'
-            if not (output_files.endswith('.dat') or output_files.endswith('.phot')):
-                phot_file_to_write = output_files + '.phot'
-            else:
-                phot_file_to_write = output_files
-            phot = open(phot_file_to_write, 'w')
-        else:
-            file_to_write = "%s_%s_%s_Schedule.csv" % (observatory_name, self.name, obs_date.strftime('%Y%m%d'))
+        if not output_files:
+            output_files = "%s_%s_Schedule" % (self.name, obs_date.strftime('%Y%m%d'))
+
+        output_rows = self.serialize_output_rows(targets, pointing=pointing)
+
         if fieldcenters:
-            fc = open(fieldcenters, 'w')
-            fc.write('# field ampl ra dec epoch raD decD RAoffset DecOffset \n')
-        with open(file_to_write,"w") as csvoutput:
-            writer = csv.writer(csvoutput, lineterminator="\n")
+            self.write_fieldcenters_file(targets, fieldcenters)
 
-            output_rows = []
-            header_row = []
-            header_row.append("Object Name")
-            header_row.append("Right Ascension")
-            header_row.append("Declination")
-            header_row.append("Estimated Magnitude")
-            header_row.append("Filter")
-            header_row.append("Exposure Time")
-            output_rows.append(header_row)
-
-            if output_files:
-                phot.write('name ra dec filter exptime m3sigma priority \n')
-
-            last_filter = C.r_band
-            for t in targets:
-                ra = t.coord.ra.hms
-                dec = t.coord.dec.dms
-
-                hmsdms = t.coord.to_string(sep=':', style='hmsdms', precision=3)
-                ra_hms = hmsdms.split()[0]
-                dec_dms = hmsdms.split()[1]
-
-                if output_files:
-                    for i,filt in enumerate(t.exposures.keys()):
-
-                        start_time='--'
-                        
-                        phot_line = '{name} {ra} {dec} {filt} '+\
-                            '{exptime} {m3sigma} {priority} \n'
-
-                        zeropoint = self.filters[filt]
-                        exptime = t.exposures[filt]
-                        m3sigma = self.limiting_magnitude(zeropoint, exptime, 3)
-                        priority = t.orig_priority
-                        name = t.name.replace(' ','')
-
-                        phot_line = phot_line.format(name=name, ra=ra_hms,
-                            dec=dec_dms, filt=filt, exptime=exptime,
-                            m3sigma=m3sigma,
-                            priority=priority)
-
-                        phot.write(phot_line)
-
-                if fieldcenters:
-                    fc_line = '{name:<40} {ampl} {ra_hms} {dec_dms} J2000  '+\
-                        '{ra:>11}  {dec:>11}    0.0000000    0.0000000 \n'
-                    fc.write(fc_line.format(name=t.name.lower(), ampl='1',
-                        ra_hms=ra_hms, dec_dms=dec_dms, ra=t.coord.ra.degree,
-                        dec=t.coord.dec.degree))
-
-                tgt_row = []
-                tgt_row.append(t.name.lower())
-
-                ra_field = ("=\"%s\"" % ra_hms)
-                dec_field = ("=\"%s\"" % dec_dms)
-
-                tgt_row.append(ra_field)
-                tgt_row.append(dec_field)
-                tgt_row.append(None)
-
-                # Last criterion: if previous obj had full 6 filters, but this target only has 3
-                if (last_filter == C.r_band) or \
-                   (last_filter == C.i_band) or \
-                    (last_filter == C.g_band) or \
-                    (last_filter == C.B_band and len(t.exposures) < 6):
-
-                    if t.type!=TargetType.GW:
-                        tgt_row.append(C.r_band)
-                        tgt_row.append(10)
-
-                    output_rows.append(tgt_row)  #do not uncomment
-
-                    # Start in riguVB order
-                    last_filter = C.g_band
-                    for filt in [C.r_band, C.i_band, C.g_band, C.u_band, C.V_band, C.B_band]:
-                        if filt==C.B_band: last_filter = C.B_band
-                        if filt in t.exposures.keys():
-                            output_rows.append(self.swope_filter_row(filt, t.exposures[filt]))
-
-                # Flip order: BVugir
-                else:
-                    if t.type!=TargetType.GW:
-                        tgt_row.append(C.B_band)
-                        tgt_row.append(20) # Acquisition in B
-                    output_rows.append(tgt_row)
-
-                    # Start in BVugir
-                    last_filter = C.B_band
-                    for filt in [C.B_band, C.V_band, C.u_band, C.g_band, C.i_band, C.r_band]:
-                        if filt==C.r_band: last_filter = C.r_band
-                        if filt in t.exposures.keys():
-                            output_rows.append(self.swope_filter_row(filt, t.exposures[filt]))
-
-            writer.writerows(output_rows)
-
-            if output_files:
-                phot.close()
-
-            if fieldcenters:
-                fc.close()
+        self.write_csv_output(output_rows, output_files+'.csv')
+        self.write_phot_file(targets, output_files+'.phot')

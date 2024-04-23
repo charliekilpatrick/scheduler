@@ -49,6 +49,10 @@ def main():
 
     for i,obs in enumerate(args.observatories):
 
+        # Set observatory parameters
+        obs.set_airmass_threshold(args.airmass_limit)
+        obs.set_halimit_threshold(args.halimit)
+
         targets = []
         for target in target_data:
 
@@ -65,7 +69,6 @@ def main():
                     sidereal_radian_array=obs.sidereal_radian_array,
                     ref_date=None,
                     apparent_mag=target['mag'],
-                    halimit=args.halimit,
                     orig_priority=target['orig_priority']
                 )
             )

@@ -44,9 +44,18 @@ def add_options():
     parser.add_argument("--target", default=-17.0, type=float,
         help="Target limiting mag for gravitational wave observations.")
 
+    # Generic target options
+    parser.add_argument("--fixed-exptime", default=None, type=float,
+        help="Set all exposures to this exposure time (in s) regardless of "+\
+        "exposure time calculations.")
+    parser.add_argument("--fixed-overhead", default=None, type=float,
+        help="Set all overheads to this duration (in s).")
+
     # Options for constraining target selection during scheduling
-    parser.add_argument("--halimit", default=None,
+    parser.add_argument("--halimit", default=None, type=float,
         help="Input hour angle limit for telescopes with limit.")
+    parser.add_argument("--airmass-limit", default=None, type=float,
+        help="Input airmass limit for targets.")
     
     # Options for using catalogs to select fields based on number of available
     # calibrators above a threshold magnitude (see Nickel).

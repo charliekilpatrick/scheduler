@@ -34,8 +34,7 @@ def handle_target_type(target):
 class Target:
     def __init__(self, name, coord, priority, target_type, observatory_lat,
                  sidereal_radian_array, ref_date=None, apparent_mag=None,
-                 obs_date=None,fixed_exp={}, halimit=None,
-                 orig_priority=None):
+                 obs_date=None,fixed_exp={}, orig_priority=None):
         # Provided by Constructor
         self.name = name
         self.coord = coord
@@ -48,7 +47,6 @@ class Target:
         self.ref_date = ref_date
         self.apparent_mag = apparent_mag
         self.obs_date = obs_date
-        self.halimit = halimit
 
         self.utc_start_time = None
 
@@ -56,8 +54,7 @@ class Target:
         self.peak_airmass_idx = None
         self.peak_airmass_val = None
 
-        self.initialize_airmass(observatory_lat, sidereal_radian_array,
-            halimit=self.halimit)
+        self.initialize_airmass(observatory_lat, sidereal_radian_array)
 
         # Computed by Telescope
         self.net_priority = self.priority
@@ -72,17 +69,17 @@ class Target:
         self.scheduled_time_array = None # Airmass plot abscissa
         self.scheduled_airmass_array = None # Airmass plot ordinate
 
-    def initialize_airmass(self, latitude, sidereal_radian_array, halimit=None):
+    def initialize_airmass(self, latitude, sidereal_radian_array):
 
         # Computed by Constructor
         self.raw_airmass_array = self.compute_airmass(latitude,
-            sidereal_radian_array, halimit=halimit)
+            sidereal_radian_array)
         self.peak_airmass_idx = np.argmin(self.raw_airmass_array)
         self.peak_airmass_val = self.raw_airmass_array[self.peak_airmass_idx]
 
     # Compute airmass for an observatory at a specific latitude given an input
     # array of sidereal times (in radians).
-    def compute_airmass(self, latitude, sidereal_radian_array, halimit=None):
+    def compute_airmass(self, latitude, sidereal_radian_array, halimit=6.0):
         n = len(sidereal_radian_array)
 
         RA = np.empty(n)
@@ -101,9 +98,11 @@ class Target:
         term2 = np.cos(DEC)*np.cos(LAT)*np.cos(HA)
         am = 1.0/(np.sin(np.arcsin(term1+term2)))
 
-        mask = (am > 3.0) | (am < 1.0)
+        # Set airmass limit to some large value
+        mask = (am > 10.0) | (am < 1.0)
         am[mask] = 9999
-        if halimit:
-            am[(np.abs(HAhour) > float(halimit))]=9999
+
+        # Hour angle limit
+        am[np.abs(HAhour) > float(halimit)]=9999
 
         return am

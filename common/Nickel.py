@@ -17,6 +17,12 @@ class Nickel(common.Telescope.Telescope):
     def __init__(self):
         self.targets = None
         self.name = "Nickel"
+
+        self.fixed_exptime = None
+
+        # Base overhead on observations (in seconds)
+        self.base_overhead = 60.
+
         # Filter name: Zero-point
         self.filters = {
             C.B_band:14.40086907,

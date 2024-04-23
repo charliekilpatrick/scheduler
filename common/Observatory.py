@@ -44,6 +44,9 @@ class Observatory():
         self.lat = lat
         self.elevation = elevation
 
+        self.airmass_limit = C.airmass_threshold
+        self.halimit = None
+
         self.utc_offset = utc_offset
         self.utc_offset_name = utc_offset_name
 
@@ -182,6 +185,12 @@ class Observatory():
             self.sidereal_string_array.append(st_string)
             self.sidereal_radian_array.append(st)
 
+    def set_airmass_threshold(self, threshold):
+        self.airmass_limit = threshold
+
+    def set_halimit_threshold(self, halimit):
+        self.halimit = halimit
+
     def swap(self, targets, idx):
         tgt1 = copy.deepcopy(targets[idx])
         tgt2 = copy.deepcopy(targets[idx+1])
@@ -232,7 +241,7 @@ class Observatory():
     def is_allowed(self, targets):
 
         for tgt in targets:
-            goodtime = np.where(tgt.raw_airmass_array <= C.airmass_threshold)[0]
+            goodtime = np.where(tgt.raw_airmass_array <= self.airmass_limit)[0]
 
             start = tgt.starting_index
             end = int(tgt.starting_index+tgt.total_minutes*60./C.round_to)
@@ -413,7 +422,7 @@ class Observatory():
             targets_copy = []
             for tgt in targets:
                 tgt.initialize_airmass(self.ephemeris.lat, 
-                    self.sidereal_radian_array, halimit=tgt.halimit)
+                    self.sidereal_radian_array)
                 targets_copy.append(copy.deepcopy(tgt))
 
             telescope.set_targets(copy.deepcopy(targets_copy))
@@ -476,7 +485,7 @@ class Observatory():
             while not found:
 
                 gam2[np.where(time_slots == 1)] = 8888 # make different than airmass cutoff flag
-                goodtime = np.where(gam2 <= C.airmass_threshold)
+                goodtime = np.where(gam2 <= self.airmass_limit)
                 n = len(goodtime[0])
 
                 current_start = -1 # So that iterator below starts at 0, the first index

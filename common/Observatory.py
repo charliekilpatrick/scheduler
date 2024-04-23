@@ -166,7 +166,7 @@ class Observatory():
                         'mag': row['Vmag']}
                         )
 
-        except requests.exceptions.ReadTimeout:
+        except (requests.exceptions.ReadTimeout,requests.exceptions.ConnectTimeout):
             pass
 
 

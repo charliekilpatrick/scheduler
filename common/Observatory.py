@@ -4,6 +4,7 @@ from common.Utilities import UTC_Offset
 from common.Utilities import download_ps1_catalog
 
 import ephem
+import requests
 from dateutil.parser import parse
 from datetime import tzinfo, timedelta, datetime
 import pytz as pytz
@@ -134,35 +135,39 @@ class Observatory():
         c = SkyCoord(str(lst), self.ephemeris.lat, unit=vunits)
 
         # Get FK5 catalog and find closest object to zenith at start of night
-        table = Vizier.query_region(c, radius = 15 * u.deg, catalog='IV/22')[0]
-        mask = table['Vmag']>4.0
-        table = table[mask]
+        try:
+            table = Vizier.query_region(c, radius = 15 * u.deg, catalog='IV/22')[0]
+            mask = table['Vmag']>4.0
+            table = table[mask]
 
-        separation = Column([c.separation(SkyCoord(r['RAJ2000'],
-            r['DEJ2000'], unit=vunits)).degree for r in table],
-            name='separation')
+            separation = Column([c.separation(SkyCoord(r['RAJ2000'],
+                r['DEJ2000'], unit=vunits)).degree for r in table],
+                name='separation')
 
-        table.add_column(separation)
-        table.sort('separation')
+            table.add_column(separation)
+            table.sort('separation')
 
-        if len(table)>5:
-            table = table[0:5]
-            pointing = [SkyCoord(r['RAJ2000'], r['DEJ2000'], unit=vunits)
-                for r in table[0:5]]
-        else:
-            pointing = [SkyCoord(r['RAJ2000'], r['DEJ2000'], unit=vunits)
-                for r in table]
+            if len(table)>5:
+                table = table[0:5]
+                pointing = [SkyCoord(r['RAJ2000'], r['DEJ2000'], unit=vunits)
+                    for r in table[0:5]]
+            else:
+                pointing = [SkyCoord(r['RAJ2000'], r['DEJ2000'], unit=vunits)
+                    for r in table]
 
-        for row in table:
-            coord = SkyCoord(row['RAJ2000'],row['DEJ2000'], unit=vunits)
-            self.pointing.append(
-                    {'name': 'HD'+str(row['HD']),
-                    'ra': coord.to_string(sep=':', style='hmsdms',
-                        precision=3).split()[0],
-                    'dec': coord.to_string(sep=':', style='hmsdms',
-                        precision=3).split()[1],
-                    'mag': row['Vmag']}
-                    )
+            for row in table:
+                coord = SkyCoord(row['RAJ2000'],row['DEJ2000'], unit=vunits)
+                self.pointing.append(
+                        {'name': 'HD'+str(row['HD']),
+                        'ra': coord.to_string(sep=':', style='hmsdms',
+                            precision=3).split()[0],
+                        'dec': coord.to_string(sep=':', style='hmsdms',
+                            precision=3).split()[1],
+                        'mag': row['Vmag']}
+                        )
+
+        except requests.exceptions.ReadTimeout:
+            pass
 
 
         for utc_time in self.utc_time_array:

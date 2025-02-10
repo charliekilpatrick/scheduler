@@ -15,10 +15,10 @@ class Thacher(common.Telescope.Telescope):
         # Filter name: Zero-point
         self.filters = {
             C.V_band:14.93966783,
-            C.r_prime:15.1197765,
-            C.i_prime:14.52342636,
-            C.z_prime:13.68546838,
-            C.g_prime:15.29722848
+            C.r_band:15.1197765,
+            C.i_band:14.52342636,
+            C.z_band:13.68546838,
+            C.g_band:15.29722848
         }
         self.exp_funcs = {
             TargetType.Supernova: self.compute_sn_exposure,
@@ -52,10 +52,10 @@ class Thacher(common.Telescope.Telescope):
         elif days_from_disc > 10 and days_from_disc <= 60:
             s_to_n = 20
 
-        exposures.update({C.r_prime: self.round_to_num(C.round_to, 
-            self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.r_prime]))})
-        exposures.update({C.i_prime: self.round_to_num(C.round_to, 
-            self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.i_prime]))})
+        exposures.update({C.r_band: self.round_to_num(C.round_to, 
+            self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.r_band]))})
+        exposures.update({C.i_band: self.round_to_num(C.round_to, 
+            self.time_to_S_N(s_to_n, adj_app_mag, self.filters[C.i_band]))})
 
         # Finally, don't go less than 45s (~ readout time), don't go more than 600s on Swope
         for key, value in exposures.items():
@@ -71,10 +71,10 @@ class Thacher(common.Telescope.Telescope):
         s_to_n = 100
 
         # Don't know what the apparent mag should be?
-        exposures.update({C.r_prime: self.round_to_num(C.round_to, 
-            self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.r_prime]))})
-        exposures.update({C.i_prime: self.round_to_num(C.round_to, 
-            self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.i_prime]))})
+        exposures.update({C.r_band: self.round_to_num(C.round_to, 
+            self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.r_band]))})
+        exposures.update({C.i_band: self.round_to_num(C.round_to, 
+            self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.i_band]))})
         exposures.update({C.B_band: self.round_to_num(C.round_to, 
             self.time_to_S_N(s_to_n, std.ApparentMag, self.filters[C.B_band]))})
         exposures.update({C.V_band: self.round_to_num(C.round_to, 
@@ -94,8 +94,8 @@ class Thacher(common.Telescope.Telescope):
         exposures = {}
         exposures.update({C.B_band: 1800})
         exposures.update({C.V_band: 1200})
-        exposures.update({C.r_prime: 1200})
-        exposures.update({C.i_prime: 1200})
+        exposures.update({C.r_band: 1200})
+        exposures.update({C.i_band: 1200})
 
         tmp.exposures = exposures
 
@@ -104,10 +104,10 @@ class Thacher(common.Telescope.Telescope):
         exposures = {}
 
         s_to_n = 5.
-        i_exp = self.time_to_S_N(s_to_n, gw.apparent_mag, self.filters[C.i_prime])
+        i_exp = self.time_to_S_N(s_to_n, gw.apparent_mag, self.filters[C.i_band])
         mean_exp = self.round_to_num(C.round_to, i_exp)
 
-        exposures.update({C.i_prime: mean_exp})
+        exposures.update({C.i_band: mean_exp})
 
         gw.exposures = exposures
 
